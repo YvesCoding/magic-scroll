@@ -1,0 +1,10 @@
+{
+  "version": "0.0.1",
+  "name": "magic-scroll-base",
+  "description": "",
+  "main": "index.ts",
+  "private": true,
+  "keywords": [],
+  "author": "",
+  "license": "MIT"
+}

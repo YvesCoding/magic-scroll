@@ -1,0 +1,22 @@
+{
+  "defaultSeverity": "error",
+  "extends": ["tslint:recommended"],
+  "rules": {
+    "variable-name": false,
+    "indent": [false, "tabs"],
+    "quotemark": false,
+    "triple-equals": false,
+    "interface-name": false,
+    "object-literal-sort-keys": false,
+    "max-classes-per-file": false,
+    "member-access": false,
+    "trailing-comma": false,
+    "ordered-imports": false,
+    "no-console": false,
+    "prefer-const": false,
+    "forin": false,
+    "no-shadowed-variable": false,
+    "no-bitwise": false,
+    "jsdoc-format": false
+  }
+}

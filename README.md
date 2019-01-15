@@ -1,1 +1,1 @@
-# xw-scroll
+# magic-scroll

@@ -1,0 +1,14 @@
+{
+  "name": "magic-scroll-native",
+  "version": "0.0.1",
+  "description": "A customizable, smooth-scroll scroll component based on react.js",
+  "main": "dist/magic-scroll.js",
+  "scripts": {},
+  "keywords": [
+    "magic-scroll",
+    "react",
+    "scrollbar"
+  ],
+  "author": "Yves Wang",
+  "license": "MIT"
+}
