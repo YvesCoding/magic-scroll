@@ -1,20 +1,22 @@
-import Container from './presentation/Container';
 import * as React from 'react';
-import { debounce, throttle } from 'shared/Util/limit';
-import { getDom } from 'shared/Util/dom';
-import { warn } from 'shared/Util/warn';
-import { Subscription } from 'shared/Util/subscription';
+
+import createBar from './components/bar';
+import Container from './components/container';
+
+import { debounce, throttle } from 'shared/util/limit';
+import { getDom } from 'shared/util/dom';
+import { warn } from 'shared/util/warn';
+import { Subscription } from 'shared/util/subscription';
+
 import detectResize from 'third-party/resize-detector';
-import createBar from './presentation/Bar';
 
 interface Props {
-  /**
-   * Ues for forward ref in HOC
-   */
-  wrappedComp: any;
+  // The ref passed from outside
+  wrappedCompRef: any;
 
   /** Inline style */
   style?: React.CSSProperties;
+
   /** Class */
   className?: string | string[];
 
@@ -32,21 +34,6 @@ interface Props {
   initialScrollX?: false | string | number;
 
   /**
-   * Give a padding to  Prevent scrollbar from sheltering the content
-   */
-  padding?: boolean;
-
-  /**
-   * The distance of scrollbar away from the two ends of the X axis and Y axis.
-   */
-  gutterOfEnds?: string;
-
-  /**
-   * The distance of scrollbar away from the side of container.
-   */
-  gutterOfSide?: string;
-
-  /**
    * scrollbar's size(Height/Width).
    */
   barSize?: string;
@@ -60,6 +47,36 @@ interface Props {
    *  scrollbar's border-radius.
    */
   barBorderRadius?: string | 'auto';
+
+  /*
+   * The keep-show time of scrollbar.
+   */
+  barKeepShowTime?: number;
+
+  /**
+   * keep bar show.
+   */
+  keepBarShow?: boolean;
+
+  /**
+   * Whether to showbar when mouse is moving on content.
+   */
+  onlyShowBarOnScroll?: boolean;
+
+  /**
+   * Bar's background.
+   */
+  barBg?: string;
+
+  /**
+   * Bar's opacity.
+   */
+  barOpacity?: number;
+
+  /**
+   * Bar's class.
+   */
+  barCls?: number;
 
   /**
    * Rail's background .
@@ -95,36 +112,6 @@ interface Props {
    * Whether to keep rail show or not, event content height is not overflow.
    */
   keepRailShow?: boolean;
-
-  /*
-   * The duration of bar's disappearence.
-   */
-  barDisappearDuration?: number;
-
-  /**
-   * keep bar show.
-   */
-  keepBarShow?: boolean;
-
-  /**
-   * Whether to showbar when mouse is moving on content.
-   */
-  showBarWhenMove?: boolean;
-
-  /**
-   * Bar's background.
-   */
-  barBg?: string;
-
-  /**
-   * Bar's opacity.
-   */
-  barOp?: number;
-
-  /**
-   * Bar's class.
-   */
-  barCls?: number;
 
   /**
    * scroll button enable or not
@@ -231,16 +218,17 @@ export function enhance<wrappedCompProps>(
 
       // Bind `this` context
       this._handleScroll = this._handleScroll.bind(this);
-      this._onDragBar = this._onDragBar.bind(this);
       this._handleResize = this._handleResize.bind(this);
       this._onRailClick = this._onRailClick.bind(this);
       this._setBarDrag = this._setBarDrag.bind(this);
       this._onContainerEnter = this._onContainerEnter.bind(this);
       this._onContainerMove = this._onContainerMove.bind(this);
       this._onContainerLeave = this._onContainerLeave.bind(this);
+      this._onBarDrag = this._onBarDrag.bind(this);
+      this._onScrollButtonClick = this._onScrollButtonClick.bind(this);
 
       // // Debounce and throttle  methods
-      this._hideBar = debounce(this._hideBar, this.props.barDisappearDuration);
+      this._hideBar = debounce(this._hideBar, this.props.barKeepShowTime);
       this._onContainerMove = throttle(this._onContainerMove, 500);
 
       this.subscription = new Subscription();
@@ -248,19 +236,18 @@ export function enhance<wrappedCompProps>(
 
     render() {
       const {
+        wrappedCompRef,
         children,
         style,
         className,
         renderContainer,
         barBorderRadius,
         barSize,
-        gutterOfEnds,
-        gutterOfSide,
         railBg,
         railCls,
         barBg,
         barCls,
-        barOp,
+        barOpacity,
         barMinSize,
         railOp,
         railSize,
@@ -271,7 +258,6 @@ export function enhance<wrappedCompProps>(
         scrollButtonClickStep,
         scrollButtonEnable,
         scrollButtonPressingStep,
-        wrappedComp,
         ...otherProps
       } = this.props;
       const { barState } = this.state;
@@ -288,7 +274,7 @@ export function enhance<wrappedCompProps>(
         barSize,
         barBg,
         barCls,
-        barOp,
+        barOpacity,
         barMinSize,
         barBorderRadius,
 
@@ -297,11 +283,9 @@ export function enhance<wrappedCompProps>(
         scrollButtonEnable,
         scrollButtonPressingStep,
 
-        gutterOfEnds,
-        gutterOfSide,
-
         setDrag: this._setBarDrag,
-        onDrag: this._onDragBar,
+        onBarDrag: this._onBarDrag,
+        onScrollButtonClick: this._onScrollButtonClick,
         onRailClick: this._onRailClick
       };
 
@@ -330,6 +314,10 @@ export function enhance<wrappedCompProps>(
               ref={(value: any) => {
                 // wrappedComp(value);
                 this.wrappedComp = value;
+
+                if (wrappedCompRef) {
+                  wrappedCompRef(value);
+                }
               }}
               onContainerRefresh={this._refresh.bind(this)}
               onScrollComplete={this._scrollComptelte.bind(this)}
@@ -485,6 +473,8 @@ export function enhance<wrappedCompProps>(
     /** --------- react to events ----------------*/
     _handleScroll() {
       this._updateBar();
+
+      this._showHideBar();
     }
 
     _handleResize() {
@@ -497,20 +487,22 @@ export function enhance<wrappedCompProps>(
       });
     }
 
-    _scrollComptelte(...args) {
-      if (this.props.handleScrollComplete) {
-        this.props.handleScrollComplete.apply(this.props.wrappedComp, args);
-      }
+    _onBarDrag(move, type: 'x' | 'y') {
+      this.wrappedComp._onBarDrag(type, move);
+    }
+    _onScrollButtonClick(move, type: 'x' | 'y', animate = true) {
+      this.wrappedComp.scrollBy(
+        {
+          [type]: move
+        },
+        false /* whether to animate */
+      );
     }
 
-    _onDragBar(percent, type) {
-      const pos = type == 'vertical' ? 'y' : 'x';
-      const size = type == 'vertical' ? 'scrollHeight' : 'scrollWidth';
-      this.wrappedComp._onBarDrag({
-        direction: pos,
-        percent,
-        size
-      });
+    _scrollComptelte(...args) {
+      if (this.props.handleScrollComplete) {
+        this.props.handleScrollComplete.apply(this.wrappedComp, args);
+      }
     }
 
     _setBarDrag(isDragging) {
@@ -524,20 +516,20 @@ export function enhance<wrappedCompProps>(
     }
     _onContainerEnter() {
       this._isLeaveContainer = false;
-      if (this.props.showBarWhenMove) {
+      if (!this.props.onlyShowBarOnScroll) {
         this._updateBar();
         this._showBar();
       }
     }
     _onContainerMove() {
       this._updateBar();
-      if (this.props.showBarWhenMove && !this._isLeaveContainer) {
+      if (!this.props.onlyShowBarOnScroll && !this._isLeaveContainer) {
         this._showBar();
       }
     }
   }
 
   return React.forwardRef((props: Props & wrappedCompProps, ref) => {
-    return <MagicScrollBase {...props} wrappedComp={ref} />;
+    return <MagicScrollBase {...props} wrappedCompRef={ref} />;
   });
 }

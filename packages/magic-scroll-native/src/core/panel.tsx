@@ -1,14 +1,14 @@
 import * as React from 'react';
-import BasePanel from 'magic-scroll-base/presentation/Panel';
-import { BarState } from 'magic-scroll-base/presentation/Bar';
+import BasePanel from 'magic-scroll-base/components/Panel';
+import { BarState } from 'magic-scroll-base/components/Bar';
 import {
   getNativeScrollbarSize,
   getComplitableStyle
-} from 'shared/Util/compitable';
+} from 'shared/util/compitable';
 import detectResize from 'third-party/resize-detector';
-import { getDom, eventOnOff } from 'shared/Util/dom';
-import { Subscription } from 'shared/Util/subscription';
-import { capitalize } from 'shared/Util/object';
+import { getDom, eventOnOff } from 'shared/util/dom';
+import { Subscription } from 'shared/util/subscription';
+import { capitalize } from 'shared/util/object';
 
 interface Props {
   barsState: {
@@ -137,6 +137,7 @@ export default class View extends React.PureComponent<Props> {
   }
   /** Internal Medthds */
   _handleScroll(e: any) {
+    console.log('handle scrolling...');
     this.props.handleScroll(e);
   }
   _detectResize(element) {

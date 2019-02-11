@@ -95,7 +95,7 @@ const eventOnOff = (dom, eventName, hander, capture, type = 'on') => {
     type == 'on' ? dom.addEventListener(eventName, hander, capture) : dom.removeEventListener(eventName, hander, capture);
 };
 /**
- * Nomalize the size of a dom
+ * If value is a percent, convert it to a numeric one.
  * such as:
  * 85% -> size * 0.85
  */
@@ -204,10 +204,15 @@ class Panel extends React.PureComponent {
               { renderPanel, children, className: cn } = _a,
               others = __rest(_a, ["renderPanel", "children", "className"]);
         const className = normalizeClass('__panel', cn);
+        const style = {
+            boxSizing: 'border-box',
+            position: 'relative'
+        };
         if (renderPanel) {
-            return React.cloneElement(renderPanel(), Object.assign({ className }, others), children);
+            return React.cloneElement(renderPanel(), Object.assign({ className,
+                style }, others), children);
         } else {
-            return React.createElement("div", Object.assign({ className: className }, others), children);
+            return React.createElement("div", Object.assign({ className: className, style: style }, others), children);
         }
     }
 }
@@ -280,8 +285,6 @@ const capitalize = cached(str => {
     return str.charAt(0).toUpperCase() + str.slice(1);
 });
 
-var styles = { "__view": "magic-scroll___view__1wgBU" };
-
 class View extends React.PureComponent {
     constructor(props) {
         super(props);
@@ -291,7 +294,9 @@ class View extends React.PureComponent {
     }
     render() {
         const { children, barsState, renderView, renderPanel, barPos, scrollingX, scrollingY } = this.props;
-        const style = {};
+        const style = {
+            height: '100%'
+        };
         const className = ['__native'];
         style.overflowY = !scrollingY ? 'hidden' : barsState.vBar.size ? 'scroll' : '';
         style.overflowX = !scrollingX ? 'hidden' : barsState.hBar.size ? 'scroll' : '';
@@ -307,7 +312,12 @@ class View extends React.PureComponent {
                 style.height = `calc(100% + ${gutter}px)`;
             }
         }
-        const viewStyle = {};
+        const viewStyle = {
+            position: 'relative',
+            boxSizing: 'border-box',
+            minHeight: '100%',
+            minWidth: '100%'
+        };
         const widthStyle = getComplitableStyle('width', 'fit-content');
         if (widthStyle) {
             viewStyle.width = widthStyle;
@@ -315,7 +325,7 @@ class View extends React.PureComponent {
         let view;
         if (renderView) {
             view = React.cloneElement(renderView(this.props), {
-                className: styles._view,
+                className: '__view',
                 ref: 'view',
                 style: viewStyle
             }, children);
@@ -337,6 +347,7 @@ class View extends React.PureComponent {
     }
     /** Internal Medthds */
     _handleScroll(e) {
+        console.log('handle scrolling...');
         this.props.handleScroll(e);
     }
     _detectResize(element) {
@@ -665,6 +676,69 @@ function smoothScroll(elm, deltaX, deltaY, speed, easing, scrollingComplete) {
   core.effect.Animate.start(stepCallback, verifyCallback, scrollingComplete, speed, easingMethod);
 }
 
+const map = {
+    vertical: {
+        size: 'height',
+        opsSize: 'width',
+        posName: 'top',
+        opposName: 'bottom',
+        sidePosName: 'right',
+        page: 'pageY',
+        scroll: 'scrollTop',
+        scrollSize: 'scrollHeight',
+        offset: 'offsetHeight',
+        client: 'clientY',
+        axis: 'Y',
+        scrollButton: {
+            start: 'top',
+            end: 'bottom'
+        }
+    },
+    horizontal: {
+        size: 'width',
+        opsSize: 'height',
+        posName: 'left',
+        opposName: 'right',
+        sidePosName: 'bottom',
+        page: 'pageX',
+        scroll: 'scrollLeft',
+        scrollSize: 'scrollWidth',
+        offset: 'offsetWidth',
+        client: 'clientX',
+        axis: 'X',
+        scrollButton: {
+            start: 'left',
+            end: 'right'
+        }
+    }
+};
+
+/**
+ * Get a html element from a component.
+ */
+const getDom$1 = ref => {
+    if (!ref) {
+        return null;
+    }
+    const _realDom = ReactDom.findDOMNode(ref);
+    return _realDom;
+};
+/**
+ * Deep merge from tow objects
+ */
+// export function merge(source: any, dest: any) {}
+/**
+ * Add or remove a event listener
+ */
+const eventOnOff$1 = (dom, eventName, hander, capture, type = 'on') => {
+    type == 'on' ? dom.addEventListener(eventName, hander, capture) : dom.removeEventListener(eventName, hander, capture);
+};
+/**
+ * If value is a percent, convert it to a numeric one.
+ * such as:
+ * 85% -> size * 0.85
+ */
+
 function isMobile$1() {
     return 'ontouchstart' in window;
 }
@@ -674,6 +748,353 @@ function isMobile$1() {
  * Get a style with a browser prefix
  */
 
+function cached$1(fn) {
+    const cache = Object.create(null);
+    return function cachedFn(str) {
+        const hit = cache[str];
+        return hit || (cache[str] = fn(str));
+    };
+}
+
+/* --------------- Type End ---------------- */
+const rgbReg = /rgb\(/;
+const extractRgbColor = /rgb\((.*)\)/;
+// Transform a common color int oa `rgbA` color
+const getRgbAColor = cached$1(identity => {
+    const [color, opacity] = identity.split('-');
+    const div = document.createElement('div');
+    div.style.background = color;
+    document.body.appendChild(div);
+    const computedColor = window.getComputedStyle(div).backgroundColor;
+    document.body.removeChild(div);
+    /* istanbul ignore if */
+    if (!rgbReg.test(computedColor)) {
+        return color;
+    }
+    return `rgba(${extractRgbColor.exec(computedColor)[1]}, ${opacity})`;
+});
+class Bar extends React.PureComponent {
+    constructor(props) {
+        super(props);
+        const type = this.props.horizontal ? 'horizontal' : 'vertical';
+        this.bar = map[type];
+        this._createDragEvent = this._createDragEvent.bind(this);
+        this._handleRailClick = this._handleRailClick.bind(this);
+    }
+    render() {
+        const { hideBar, otherBarHide, opacity, railBg, railCls, railBorder, railOp, railSize, railBorderRadius, barBg, barCls, barBorderRadius, barSize,
+            //  scrollButtonBg,
+            //  scrollButtonClickStep,
+            scrollButtonEnable
+            //  scrollButtonPressingStep
+        } = this.props;
+        const barType = this._getType();
+        const BAR_MAP = map[barType];
+        const classNameOfType = '__is-' + barType;
+        // Rail props
+        /** Get rgbA format background color */
+        const railBackgroundColor = getRgbAColor(railBg + '-' + railOp);
+        const endPos = otherBarHide ? 0 : railSize;
+        const railStyle = {
+            position: 'absolute',
+            zIndex: 1,
+            borderRadius: railBorderRadius !== 'auto' && railBorderRadius || barSize,
+            // backgroundColor: 'blue',
+            [BAR_MAP.opsSize]: railSize,
+            [BAR_MAP.posName]: 0,
+            [BAR_MAP.opposName]: endPos,
+            [BAR_MAP.sidePosName]: 0,
+            background: railBackgroundColor,
+            border: railBorder
+        };
+        // Bar wrapper props
+        const buttonSize = scrollButtonEnable ? railSize : 0;
+        const barWrapStyle = {
+            position: 'absolute',
+            borderRadius: barBorderRadius !== 'auto' && barBorderRadius || barSize,
+            [BAR_MAP.posName]: buttonSize,
+            [BAR_MAP.opsSize]: barSize,
+            [BAR_MAP.opposName]: buttonSize
+        };
+        // Bar props
+        const barStyle = {
+            cursor: 'pointer',
+            position: 'absolute',
+            margin: 'auto',
+            transition: 'opacity 0.5s',
+            userSelect: 'none',
+            borderRadius: 'inherit',
+            backgroundColor: barBg,
+            [BAR_MAP.size]: this._getBarSize() + '%',
+            opacity,
+            [BAR_MAP.opsSize]: barSize,
+            transform: `translate${BAR_MAP.axis}(${this._getBarPos()}%)`
+        };
+        if (barType == 'vertical') {
+            barWrapStyle.width = '100%';
+            // Let bar to be on the center.
+            barStyle.left = 0;
+            barStyle.right = 0;
+        } else {
+            barWrapStyle.height = '100%';
+            barStyle.top = 0;
+            barStyle.bottom = 0;
+        }
+        return React.createElement("div", { ref: "rail", className: `__rail ${classNameOfType} ${railCls}`, style: railStyle }, createScrollbarButton(this, 'start'), hideBar ? null : React.createElement("div", { ref: "barWrap", className: `__bar-wrap ${classNameOfType}`, style: barWrapStyle }, React.createElement("div", { ref: "bar", className: `__bar ${classNameOfType} ${barCls} ${opacity == 0 ? '__is-hide' : '__is-show'}`, style: barStyle })), createScrollbarButton(this, 'end'));
+    }
+    componentDidMount() {
+        this._addAllListeners();
+    }
+    // Internal methods
+    /**
+     * Create a drag event according to current platform
+     */
+    _getBarSize() {
+        return Math.max(this.props.barMinSize * 100, this.props.barsState.size);
+    }
+    _getBarPos() {
+        const scrollDistance = this.props.barsState.move * this.props.barsState.size;
+        const pos = scrollDistance * this._getBarRatio() / this._getBarSize();
+        return pos;
+    }
+    _getBarRatio() {
+        return (100 - this._getBarSize()) / (100 - this.props.barsState.size);
+    }
+    _createDragEvent(type) {
+        const bar = this.refs.bar;
+        const rail = this.refs.barWrap;
+        const moveEvent = type == 'touch' ? 'touchmove' : 'mousemove';
+        const endEvent = type == 'touch' ? 'touchend' : 'mouseup';
+        const dragStart = e => {
+            e.stopImmediatePropagation();
+            e.preventDefault();
+            document.onselectstart = () => false;
+            const event = type == 'touch' ? e.touches[0] : e;
+            const dragPos = event[this.bar.client];
+            this.startPosition = dragPos - bar.getBoundingClientRect()[this.bar.posName];
+            eventOnOff$1(document, moveEvent, onDragging);
+            eventOnOff$1(document, endEvent, dragEnd);
+            this.props.setDrag(true);
+        };
+        const onDragging = e => {
+            const event = type == 'touch' ? e.touches[0] : e;
+            const dragPos = event[this.bar.client];
+            const delta = (dragPos - rail.getBoundingClientRect()[this.bar.posName]) / this._getBarRatio();
+            const percent = (delta - this.startPosition) / rail[this.bar.offset];
+            this.props.onBarDrag(percent, this.bar.axis.toLowerCase());
+        };
+        const dragEnd = () => {
+            document.onselectstart = null;
+            this.startPosition = 0;
+            eventOnOff$1(document, moveEvent, onDragging, false, 'off');
+            eventOnOff$1(document, endEvent, dragEnd, false, 'off');
+            this.props.setDrag(false);
+        };
+        return dragStart;
+    }
+    _addAllListeners() {
+        if (this.refs.bar) {
+            this._addBarListener();
+        }
+        if (this.refs.rail) {
+            this._addRailListener();
+        }
+    }
+    _addBarListener() {
+        // Not registry listener on props because there is a passive
+        // issue on `touchstart` event, see:
+        // https://github.com/facebook/react/issues/9809#issuecomment-414072263
+        const bar = this.refs.bar;
+        const type = isMobile$1() ? 'touchstart' : 'mousedown';
+        let event = isMobile$1() ? this._createDragEvent('touch') : this._createDragEvent('mouse');
+        eventOnOff$1(bar, type, event, { passive: false });
+    }
+    _addRailListener() {
+        const rail = this.refs.barWrap;
+        const type = isMobile$1() ? 'touchstart' : 'mousedown';
+        eventOnOff$1(rail, type, e => this._handleRailClick(e, type));
+    }
+    _handleRailClick(e, type) {
+        // Scroll to the place of rail where click event triggers.
+        const { client, offset, posName, axis } = this.bar;
+        const bar = this.refs.bar;
+        if (!bar) {
+            return;
+        }
+        const barOffset = bar[offset];
+        const event = type == 'touchstart' ? e.touches[0] : e;
+        const percent = (event[client] - e.currentTarget.getBoundingClientRect()[posName] - barOffset / 2) / (e.currentTarget[offset] - barOffset);
+        this.props.onRailClick(percent * 100 + '%', axis.toLowerCase());
+    }
+    _getType() {
+        return this.props.horizontal ? 'horizontal' : 'vertical';
+    }
+}
+Bar.defaultProps = {
+    barSize: '6px',
+    barBorderRadius: 'auto',
+    barMinSize: 0,
+    railBg: '#01a99a',
+    railOp: 0,
+    railCls: '',
+    railSize: '6px',
+    railBorder: null,
+    railBorderRadius: 'auto',
+    keepRailShow: false,
+    onlyShowBarOnScroll: true,
+    barKeepShowTime: 300,
+    keepBarShow: false,
+    barBg: 'rgb(3, 185, 118)',
+    barCls: '',
+    barOpacity: 1,
+    scrollButtonEnable: false,
+    scrollButtonBg: '#cecece',
+    scrollButtonClickStep: 80,
+    scrollButtonPressingStep: 30
+};
+/**
+ *
+ * @param context bar instance
+ * @param type bar type (vertical | horizontal)
+ * @param env mouse means component is running on PC , or running on moblie
+ * phone.
+ */
+function createScrollButtonEvent(context, type, env = 'mouse') {
+    const endEventName = env == 'mouse' ? 'mouseup' : 'touchend';
+    const { scrollButtonClickStep, scrollButtonPressingStep } = context.props;
+    const stepWithDirection = type == 'start' ? -scrollButtonClickStep : scrollButtonClickStep;
+    const mousedownStepWithDirection = type == 'start' ? -scrollButtonPressingStep : scrollButtonPressingStep;
+    const ref = requestAnimationFrame(window);
+    let isMouseDown = false;
+    let isMouseout = true;
+    let timeoutId;
+    const start = e => {
+        /* istanbul ignore if */
+        if (3 == e.which) {
+            return;
+        }
+        e.nativeEvent.stopImmediatePropagation();
+        e.preventDefault();
+        isMouseout = false;
+        context.props.onScrollButtonClick(stepWithDirection, context.bar.axis.toLowerCase());
+        eventOnOff$1(document, endEventName, endPress, false);
+        if (env == 'mouse') {
+            const elm = context.refs[type];
+            eventOnOff$1(elm, 'mouseenter', enter, false);
+            eventOnOff$1(elm, 'mouseleave', leave, false);
+        }
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+            isMouseDown = true;
+            ref(pressingButton, window);
+        }, 500);
+    };
+    const pressingButton = () => {
+        if (isMouseDown && !isMouseout) {
+            context.props.onScrollButtonClick(mousedownStepWithDirection, context.bar.axis.toLowerCase(), false);
+            ref(pressingButton, window);
+        }
+    };
+    const endPress = () => {
+        clearTimeout(timeoutId);
+        isMouseDown = false;
+        eventOnOff$1(document, endEventName, endPress, false, 'off');
+        if (env == 'mouse') {
+            const elm = context.refs[type];
+            eventOnOff$1(elm, 'mouseenter', enter, false, 'off');
+            eventOnOff$1(elm, 'mouseleave', leave, false, 'off');
+        }
+    };
+    const enter = () => {
+        isMouseout = false;
+        pressingButton();
+    };
+    const leave = () => {
+        isMouseout = true;
+    };
+    return start;
+}
+/**
+ * create two scroll butons on one rail.
+ * @param context bar instance
+ * @param type bar type (vertical | horizontal)
+ */
+function createScrollbarButton(context, type) {
+    if (!context.props.scrollButtonEnable) {
+        return null;
+    }
+    const size = context.props.railSize;
+    const borderColor = context.props.scrollButtonBg;
+    const wrapperProps = {
+        className: normalizeClass('__bar-button', '__bar-button-is-' + context._getType() + '-' + type),
+        style: {
+            position: 'absolute',
+            cursor: 'pointer',
+            [map[context._getType()].scrollButton[type]]: 0,
+            width: size,
+            height: size
+        },
+        ref: type
+    };
+    const innerStyle = {
+        border: `calc(${size} / 2.5) solid transparent`,
+        width: '0',
+        height: '0',
+        margin: 'auto',
+        position: 'absolute',
+        top: '0',
+        bottom: '0',
+        right: '0',
+        left: '0'
+    };
+    const innerProps = {
+        className: '__bar-button-inner',
+        style: innerStyle
+    };
+    if (!context.props.horizontal) {
+        if (type == 'start') {
+            innerProps.style.borderBottomColor = borderColor;
+            innerProps.style.transform = 'translateY(-25%)';
+        } else {
+            innerProps.style.borderTopColor = borderColor;
+            innerProps.style.transform = 'translateY(25%)';
+        }
+    } else {
+        if (type == 'start') {
+            innerProps.style.borderRightColor = borderColor;
+            innerProps.style.transform = 'translateX(-25%)';
+        } else {
+            innerProps.style.borderLeftColor = borderColor;
+            innerProps.style.transform = 'translateX(25%)';
+        }
+    }
+    if (isMobile$1()) {
+        innerProps.onTouchstart = createScrollButtonEvent(context, type, 'touch');
+    } else {
+        innerProps.onMouseDown = createScrollButtonEvent(context, type);
+    }
+    return React.createElement("div", Object.assign({}, wrapperProps), React.createElement("div", Object.assign({}, innerProps, { ref: type })));
+}
+function createBar(barProps, vBarState, hBarState, opacity) {
+    const isVBarHide = !vBarState.size;
+    const isHBarHide = !hBarState.size;
+    const vBar = vBarState.size && !barProps.keepRailShow ? React.createElement(Bar, Object.assign({}, Object.assign({}, barProps, {
+        barsState: vBarState,
+        horizontal: false,
+        hideBar: isVBarHide,
+        otherBarHide: isHBarHide,
+        opacity
+    }), { key: "vBar" })) : null;
+    const hBar = vBarState.size && !barProps.keepRailShow ? React.createElement(Bar, Object.assign({}, Object.assign({}, barProps, {
+        barsState: hBarState,
+        horizontal: true,
+        hideBar: isHBarHide,
+        otherBarHide: isVBarHide,
+        opacity
+    }), { key: "hBar" })) : null;
+    return [vBar, hBar];
+}
+
 /* ---------------- Type End -------------------- */
 class BaseScroll extends React.PureComponent {
     constructor(props) {
@@ -682,10 +1103,12 @@ class BaseScroll extends React.PureComponent {
     // Render
     render() {
         const _a = this.props,
-              { renderContainer, className: cn, children, onEnter, onLeave, onMove } = _a,
-              others = __rest(_a, ["renderContainer", "className", "children", "onEnter", "onLeave", "onMove"]);
+              { renderContainer, className: cn, children, onEnter, onLeave, onMove, style = {} } = _a,
+              others = __rest(_a, ["renderContainer", "className", "children", "onEnter", "onLeave", "onMove", "style"]);
         const className = normalizeClass(cn, '__magic-scroll');
         const ch = React.createElement(React.Fragment, null, children);
+        style.position = 'relative';
+        style.overflow = 'hidden';
         let eventObj = {};
         if (!isMobile$1()) {
             eventObj = {
@@ -702,9 +1125,9 @@ class BaseScroll extends React.PureComponent {
         }
         if (renderContainer) {
             // React the cloned element
-            return React.cloneElement(renderContainer(), Object.assign({ ref: 'container', className }, eventObj, others), ch);
+            return React.cloneElement(renderContainer(), Object.assign({ ref: 'container', className }, eventObj, others, { style }), ch);
         } else {
-            return React.createElement("div", Object.assign({ ref: "container" }, eventObj, { className: className }, others), ch);
+            return React.createElement("div", Object.assign({ ref: "container" }, eventObj, { className: className }, others, { style: style }), ch);
         }
     }
     componentDidMount() {
@@ -762,32 +1185,6 @@ function throttle(func, waitTime) {
 }
 
 /**
- * Get a html element from a component.
- */
-const getDom$1 = ref => {
-    if (!ref) {
-        return null;
-    }
-    const _realDom = ReactDom.findDOMNode(ref);
-    return _realDom;
-};
-/**
- * Deep merge from tow objects
- */
-// export function merge(source: any, dest: any) {}
-/**
- * Add or remove a event listener
- */
-const eventOnOff$1 = (dom, eventName, hander, capture, type = 'on') => {
-    type == 'on' ? dom.addEventListener(eventName, hander, capture) : dom.removeEventListener(eventName, hander, capture);
-};
-/**
- * Nomalize the size of a dom
- * such as:
- * 85% -> size * 0.85
- */
-
-/**
  * copyed from vue-router!
  */
 
@@ -840,261 +1237,6 @@ class Subscription$1 {
 }
 Subscription$1.All_WATCHERS = 'ALL_WATCHERS';
 
-const map = {
-    vertical: {
-        size: 'height',
-        opsSize: 'width',
-        posName: 'top',
-        opposName: 'bottom',
-        sidePosName: 'right',
-        page: 'pageY',
-        scroll: 'scrollTop',
-        scrollSize: 'scrollHeight',
-        offset: 'offsetHeight',
-        client: 'clientY',
-        axis: 'Y',
-        scrollButton: {
-            start: 'top',
-            end: 'bottom'
-        }
-    },
-    horizontal: {
-        size: 'width',
-        opsSize: 'height',
-        posName: 'left',
-        opposName: 'right',
-        sidePosName: 'bottom',
-        page: 'pageX',
-        scroll: 'scrollLeft',
-        scrollSize: 'scrollWidth',
-        offset: 'offsetWidth',
-        client: 'clientX',
-        axis: 'X',
-        scrollButton: {
-            start: 'left',
-            end: 'right'
-        }
-    }
-};
-
-function cached$1(fn) {
-    const cache = Object.create(null);
-    return function cachedFn(str) {
-        const hit = cache[str];
-        return hit || (cache[str] = fn(str));
-    };
-}
-
-/* --------------- Type End ---------------- */
-const rgbReg = /rgb\(/;
-const extractRgbColor = /rgb\((.*)\)/;
-// Transform a common color int oa `rgbA` color
-const getRgbAColor = cached$1(identity => {
-    const [color, opacity] = identity.split('-');
-    const div = document.createElement('div');
-    div.style.background = color;
-    document.body.appendChild(div);
-    const computedColor = window.getComputedStyle(div).backgroundColor;
-    document.body.removeChild(div);
-    /* istanbul ignore if */
-    if (!rgbReg.test(computedColor)) {
-        return color;
-    }
-    return `rgba(${extractRgbColor.exec(computedColor)[1]}, ${opacity})`;
-});
-class Bar extends React.PureComponent {
-    constructor(props) {
-        super(props);
-        const type = this.props.horizontal ? 'horizontal' : 'vertical';
-        this.bar = map[type];
-        this._createDragEvent = this._createDragEvent.bind(this);
-        this._handleRailClick = this._handleRailClick.bind(this);
-    }
-    render() {
-        const { barsState, hideBar, otherBarHide, opacity, gutterOfEnds, gutterOfSide, railBg, railCls, railBorder, railOp, railSize, barBg, barCls, barBorderRadius, barSize,
-            // barMinSize,
-            //  scrollButtonBg,
-            //  scrollButtonClickStep,
-            scrollButtonEnable
-            //  scrollButtonPressingStep
-        } = this.props;
-        const barType = this._getType();
-        const BAR_MAP = map[barType];
-        const classNameOfType = '__is-' + barType;
-        /** Get rgbA format background color */
-        const railBackgroundColor = getRgbAColor(railBg + '-' + railOp);
-        const endPos = otherBarHide ? 0 : railSize;
-        const railStyle = {
-            borderRadius: barBorderRadius !== 'auto' && barBorderRadius || barSize,
-            // backgroundColor: 'blue',
-            [BAR_MAP.opsSize]: railSize,
-            [BAR_MAP.posName]: gutterOfEnds || 0,
-            [BAR_MAP.opposName]: gutterOfEnds || endPos,
-            [BAR_MAP.sidePosName]: gutterOfSide || 0,
-            background: railBackgroundColor,
-            border: railBorder
-        };
-        const barStyle = {
-            backgroundColor: barBg,
-            [BAR_MAP.size]: barsState.size + '%',
-            opacity,
-            [BAR_MAP.opsSize]: barSize,
-            transform: `translate${BAR_MAP.axis}(${barsState.move}%)`
-        };
-        const buttonSize = scrollButtonEnable ? barSize : 0;
-        const barWrapStyle = {
-            borderRadius: barBorderRadius || buttonSize,
-            [BAR_MAP.posName]: buttonSize,
-            [BAR_MAP.opsSize]: barSize,
-            [BAR_MAP.opposName]: buttonSize
-        };
-        return React.createElement("div", { ref: "rail", className: `__rail ${classNameOfType} ${railCls}`, style: railStyle }, createScrollbarButton(this, 'start'), hideBar ? null : React.createElement("div", { ref: "barWrap", className: `__bar-wrap ${classNameOfType}`, style: barWrapStyle }, React.createElement("div", { ref: "bar", className: `__bar ${classNameOfType} ${barCls}`, style: barStyle })), createScrollbarButton(this, 'end'));
-    }
-    componentDidMount() {
-        this._addAllListeners();
-    }
-    // Internal methods
-    /**
-     * Create a drag event according to current platform
-     */
-    _createDragEvent(type) {
-        const _this = this;
-        const bar = _this.refs.bar;
-        const rail = _this.refs.rail;
-        const moveEvent = type == 'touch' ? 'touchmove' : 'mousemove';
-        const endEvent = type == 'touch' ? 'touchend' : 'mouseup';
-        function dragStart(e) {
-            e.stopImmediatePropagation();
-            e.preventDefault();
-            document.onselectstart = () => false;
-            const event = type == 'touch' ? e.touches[0] : e;
-            const dragPos = event[_this.bar.client];
-            _this.startPosition = dragPos - bar.getBoundingClientRect()[_this.bar.posName];
-            eventOnOff$1(document, moveEvent, onDragging);
-            eventOnOff$1(document, endEvent, dragEnd);
-            _this.props.setDrag(true);
-        }
-        function onDragging(e) {
-            const event = type == 'touch' ? e.touches[0] : e;
-            const dragPos = event[_this.bar.client];
-            const delta = dragPos - rail.getBoundingClientRect()[_this.bar.posName];
-            const percent = (delta - _this.startPosition) / rail[_this.bar.offset];
-            _this.props.onDrag(percent, _this.props.horizontal ? 'horizontal' : 'vertical', _this.bar.scrollSize);
-        }
-        function dragEnd() {
-            document.onselectstart = null;
-            _this.startPosition = 0;
-            eventOnOff$1(document, moveEvent, onDragging, false, 'off');
-            eventOnOff$1(document, endEvent, dragEnd, false, 'off');
-            _this.props.setDrag(false);
-        }
-        return dragStart;
-    }
-    _addAllListeners() {
-        if (this.refs.bar) {
-            this._addBarListener();
-        }
-        if (this.refs.rail) {
-            this._addRailListener();
-        }
-    }
-    _addBarListener() {
-        // Not registry listener on props because there is a passive
-        // issue on `touchstart` event, see:
-        // https://github.com/facebook/react/issues/9809#issuecomment-414072263
-        const bar = this.refs.bar;
-        const type = isMobile$1() ? 'touchstart' : 'mousedown';
-        let event = isMobile$1() ? this._createDragEvent('touch') : this._createDragEvent('mouse');
-        eventOnOff$1(bar, type, event, { passive: false });
-    }
-    _addRailListener() {
-        const rail = this.refs.rail;
-        const type = isMobile$1() ? 'touchstart' : 'mousedown';
-        eventOnOff$1(rail, type, e => this._handleRailClick(e, type));
-    }
-    _handleRailClick(e, type) {
-        // Scroll to the place of rail where click event triggers.
-        const { client, offset, posName, axis } = this.bar;
-        const bar = this.refs.bar;
-        if (!bar) {
-            return;
-        }
-        const barOffset = bar[offset];
-        const event = type == 'touchstart' ? e.touches[0] : e;
-        const percent = (event[client] - e.currentTarget.getBoundingClientRect()[posName] - barOffset / 2) / (e.currentTarget[offset] - barOffset);
-        this.props.onRailClick(percent * 100 + '%', axis.toLowerCase());
-    }
-    _getType() {
-        return this.props.horizontal ? 'horizontal' : 'vertical';
-    }
-}
-Bar.defaultProps = {
-    barSize: '6px',
-    barBorderRadius: 'auto',
-    gutterOfEnds: null,
-    gutterOfSide: null,
-    barMinSize: 0.1,
-    railBg: '#01a99a',
-    railOp: 0,
-    railCls: '',
-    railSize: '6px',
-    railBorder: null,
-    railBorderRadius: 'auto',
-    keepRailShow: false,
-    showBarWhenMove: false,
-    barDisappearDuration: 300,
-    keepBarShow: false,
-    barBg: 'rgb(3, 185, 118)',
-    barCls: '',
-    barOp: 1,
-    scrollButtonEnable: false,
-    scrollButtonBg: '#cecece',
-    scrollButtonClickStep: 180,
-    scrollButtonPressingStep: 30
-};
-function createScrollbarButton(context, type) {
-    if (!context.props.scrollButtonEnable) {
-        return null;
-    }
-    const size = context.props.barSize;
-    const borderColor = context.props.scrollButtonBg;
-    const wrapperProps = {
-        className: normalizeClass('__bar-button', '__bar-button-is-' + this._getType() + '-' + type),
-        style: {
-            [map[this._getType()].scrollButton[type]]: 0,
-            width: size,
-            height: size
-        },
-        ref: type
-    };
-    const innerProps = {
-        className: '__bar-button-inner',
-        style: {
-            border: `calc(${size} / 2.5) solid ${borderColor}`
-        }
-    };
-    return React.createElement("div", Object.assign({}, wrapperProps), React.createElement("div", Object.assign({}, innerProps)));
-}
-function createBar(barProps, vBarState, hBarState, opacity) {
-    const isVBarHide = !vBarState.size;
-    const isHBarHide = !hBarState.size;
-    const vBar = vBarState.size && !barProps.keepRailShow ? React.createElement(Bar, Object.assign({}, Object.assign({}, barProps, {
-        barsState: vBarState,
-        horizontal: false,
-        hideBar: isVBarHide,
-        otherBarHide: isHBarHide,
-        opacity
-    }), { key: "vBar" })) : null;
-    const hBar = vBarState.size && !barProps.keepRailShow ? React.createElement(Bar, Object.assign({}, Object.assign({}, barProps, {
-        barsState: hBarState,
-        horizontal: true,
-        hideBar: isHBarHide,
-        otherBarHide: isVBarHide,
-        opacity
-    }), { key: "hBar" })) : null;
-    return [vBar, hBar];
-}
-
 function enhance(WrapperComponent) {
     class MagicScrollBase extends React.PureComponent {
         /* --------------------- Lifecycle Methods ------------------------ */
@@ -1124,22 +1266,23 @@ function enhance(WrapperComponent) {
             };
             // Bind `this` context
             this._handleScroll = this._handleScroll.bind(this);
-            this._onDragBar = this._onDragBar.bind(this);
             this._handleResize = this._handleResize.bind(this);
             this._onRailClick = this._onRailClick.bind(this);
             this._setBarDrag = this._setBarDrag.bind(this);
             this._onContainerEnter = this._onContainerEnter.bind(this);
             this._onContainerMove = this._onContainerMove.bind(this);
             this._onContainerLeave = this._onContainerLeave.bind(this);
+            this._onBarDrag = this._onBarDrag.bind(this);
+            this._onScrollButtonClick = this._onScrollButtonClick.bind(this);
             // // Debounce and throttle  methods
-            this._hideBar = debounce(this._hideBar, this.props.barDisappearDuration);
+            this._hideBar = debounce(this._hideBar, this.props.barKeepShowTime);
             this._onContainerMove = throttle(this._onContainerMove, 500);
             this.subscription = new Subscription$1();
         }
         render() {
             const _a = this.props,
-                  { children, style, className, renderContainer, barBorderRadius, barSize, gutterOfEnds, gutterOfSide, railBg, railCls, barBg, barCls, barOp, barMinSize, railOp, railSize, railBorderRadius, railBorder, keepRailShow, scrollButtonBg, scrollButtonClickStep, scrollButtonEnable, scrollButtonPressingStep, wrappedComp } = _a,
-                  otherProps = __rest(_a, ["children", "style", "className", "renderContainer", "barBorderRadius", "barSize", "gutterOfEnds", "gutterOfSide", "railBg", "railCls", "barBg", "barCls", "barOp", "barMinSize", "railOp", "railSize", "railBorderRadius", "railBorder", "keepRailShow", "scrollButtonBg", "scrollButtonClickStep", "scrollButtonEnable", "scrollButtonPressingStep", "wrappedComp"]);
+                  { wrappedCompRef, children, style, className, renderContainer, barBorderRadius, barSize, railBg, railCls, barBg, barCls, barOpacity, barMinSize, railOp, railSize, railBorderRadius, railBorder, keepRailShow, scrollButtonBg, scrollButtonClickStep, scrollButtonEnable, scrollButtonPressingStep } = _a,
+                  otherProps = __rest(_a, ["wrappedCompRef", "children", "style", "className", "renderContainer", "barBorderRadius", "barSize", "railBg", "railCls", "barBg", "barCls", "barOpacity", "barMinSize", "railOp", "railSize", "railBorderRadius", "railBorder", "keepRailShow", "scrollButtonBg", "scrollButtonClickStep", "scrollButtonEnable", "scrollButtonPressingStep"]);
             const { barState } = this.state;
             const barProps = {
                 railBg,
@@ -1152,17 +1295,16 @@ function enhance(WrapperComponent) {
                 barSize,
                 barBg,
                 barCls,
-                barOp,
+                barOpacity,
                 barMinSize,
                 barBorderRadius,
                 scrollButtonBg,
                 scrollButtonClickStep,
                 scrollButtonEnable,
                 scrollButtonPressingStep,
-                gutterOfEnds,
-                gutterOfSide,
                 setDrag: this._setBarDrag,
-                onDrag: this._onDragBar,
+                onBarDrag: this._onBarDrag,
+                onScrollButtonClick: this._onScrollButtonClick,
                 onRailClick: this._onRailClick
             };
             return React.createElement(React.Fragment, null, React.createElement(BaseScroll, { ref: this.container,
@@ -1172,6 +1314,9 @@ function enhance(WrapperComponent) {
                 renderContainer: renderContainer, onEnter: this._onContainerEnter, onLeave: this._onContainerLeave, onMove: this._onContainerMove }, createBar(barProps, barState.vBar, barState.hBar, barState.opacity), React.createElement(WrapperComponent, Object.assign({}, otherProps, { ref: value => {
                     // wrappedComp(value);
                     this.wrappedComp = value;
+                    if (wrappedCompRef) {
+                        wrappedCompRef(value);
+                    }
                 }, onContainerRefresh: this._refresh.bind(this), onScrollComplete: this._scrollComptelte.bind(this), onScroll: this._handleScroll.bind(this) }), children)));
         }
         componentDidMount() {
@@ -1288,6 +1433,7 @@ function enhance(WrapperComponent) {
         /** --------- react to events ----------------*/
         _handleScroll() {
             this._updateBar();
+            this._showHideBar();
         }
         _handleResize() {
             this._updateBar();
@@ -1297,19 +1443,18 @@ function enhance(WrapperComponent) {
                 [pos]: percent
             });
         }
+        _onBarDrag(move, type) {
+            this.wrappedComp._onBarDrag(type, move);
+        }
+        _onScrollButtonClick(move, type, animate = true) {
+            this.wrappedComp.scrollBy({
+                [type]: move
+            }, false /* whether to animate */);
+        }
         _scrollComptelte(...args) {
             if (this.props.handleScrollComplete) {
-                this.props.handleScrollComplete.apply(this.props.wrappedComp, args);
+                this.props.handleScrollComplete.apply(this.wrappedComp, args);
             }
-        }
-        _onDragBar(percent, type) {
-            const pos = type == 'vertical' ? 'y' : 'x';
-            const size = type == 'vertical' ? 'scrollHeight' : 'scrollWidth';
-            this.wrappedComp._onBarDrag({
-                direction: pos,
-                percent,
-                size
-            });
         }
         _setBarDrag(isDragging) {
             this._isBarDragging = isDragging;
@@ -1321,14 +1466,14 @@ function enhance(WrapperComponent) {
         }
         _onContainerEnter() {
             this._isLeaveContainer = false;
-            if (this.props.showBarWhenMove) {
+            if (!this.props.onlyShowBarOnScroll) {
                 this._updateBar();
                 this._showBar();
             }
         }
         _onContainerMove() {
             this._updateBar();
-            if (this.props.showBarWhenMove && !this._isLeaveContainer) {
+            if (!this.props.onlyShowBarOnScroll && !this._isLeaveContainer) {
                 this._showBar();
             }
         }
@@ -1344,7 +1489,7 @@ function enhance(WrapperComponent) {
     /** trigger beofore component will unmount */
     MagicScrollBase.unmount_key = 'UNMOUNT_SUBSCRIBE';
     return React.forwardRef((props, ref) => {
-        return React.createElement(MagicScrollBase, Object.assign({}, props, { wrappedComp: ref }));
+        return React.createElement(MagicScrollBase, Object.assign({}, props, { wrappedCompRef: ref }));
     });
 }
 
@@ -1461,23 +1606,34 @@ class MagicScrollNative extends React.PureComponent {
     _scrollComptelte() {
         console.log('scroll complelte...');
     }
-    _onDragBar(percent, type, scrollSize) {
-        const pos = type == 'vertical' ? 'y' : 'x';
-        const panelElm = this._getDomByRef('panel');
-        this.scrollTo({
-            [pos]: percent * panelElm[scrollSize]
-        }, false /* animate */);
-    }
-    _onBarDrag({ direction, percent, size }) {
+    _onBarDrag(direction, percent) {
         const elm = this._getDomByRef('panel');
-        const dest = elm[size] * percent;
+        const dest = elm[direction == 'x' ? 'scrollWidth' : 'scrollHeight'] * percent;
         this.scrollTo({
             [direction]: dest
         }, false);
     }
+    _getPosition() {
+        const { scrollTop, scrollLeft } = this._getDomByRef('panel');
+        return {
+            scrollTop,
+            scrollLeft
+        };
+    }
     /** Public methods */
     scrollTo({ x, y }, animate = true) {
         this._scrollTo(x, y, animate);
+    }
+    scrollBy({ x, y }, animate = true) {
+        const { scrollWidth, scrollHeight, clientWidth, clientHeight } = this._getDomByRef('panel');
+        let { scrollLeft, scrollTop } = this._getPosition();
+        if (x) {
+            scrollLeft += normalizeSize(x, scrollWidth - clientWidth);
+        }
+        if (y) {
+            scrollTop += normalizeSize(y, scrollHeight - clientHeight);
+        }
+        this._scrollTo(scrollLeft, scrollTop, animate);
     }
     refresh() {
         this._refresh();

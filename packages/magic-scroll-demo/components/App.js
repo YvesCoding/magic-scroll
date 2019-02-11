@@ -8,9 +8,16 @@ import 'magic-scroll-native/dist/magic-scroll.css';
 class Test extends React.PureComponent {
   render() {
     return (
-      <div style={{ height: '100px', width: '100px' }}>
-        <ScrollBar ref="sss" showBarWhenMove={true}>
-          <div style={{ height: '200px', width: '200px' }} />
+      <div style={{ height: '200px', width: '200px' }}>
+        <ScrollBar
+          ref="sss"
+          // scrollButtonEnable={true}
+          onlyShowBarOnScroll={true}
+          //  keepBarShow={true}
+          railSize="20px"
+          barKeepShowTime={2000}
+        >
+          <div style={{ height: '400px', width: '400px' }} />
         </ScrollBar>
       </div>
     );

@@ -1,9 +1,10 @@
 import map from 'shared/Map';
 import * as React from 'react';
-import { eventOnOff } from 'shared/Util/dom';
-import { isMobile } from 'shared/Util/compitable';
-import { cached } from 'shared/Util/object';
-import { normalizeClass } from 'shared/Util/class';
+import { eventOnOff } from 'shared/util/dom';
+import { isMobile } from 'shared/util/compitable';
+import { cached } from 'shared/util/object';
+import { normalizeClass } from 'shared/util/class';
+import { requestAnimationFrame } from 'third-party/scroller/ref';
 
 /* --------------- Type Definations ---------------- */
 
@@ -21,7 +22,8 @@ export interface InternalProps {
 
 export interface FunctionalProps {
   setDrag(isDrag: boolean): void;
-  onDrag(movedPercent, type: 'vertical' | 'horizontal', scrollSize): void;
+  onBarDrag(move, type: 'x' | 'y');
+  onScrollButtonClick(move, type: 'x' | 'y', animate?: boolean);
   onRailClick(movedPercent, pos: 'y' | 'x'): void;
 }
 
@@ -31,16 +33,6 @@ export interface OtherProps {
 }
 
 export interface UserPassedProps {
-  /**
-   * The distance of scrollbar away from the two ends of the X axis and Y axis.
-   */
-  gutterOfEnds: string;
-
-  /**
-   * The distance of scrollbar away from the side of container.
-   */
-  gutterOfSide: string;
-
   /**
    * scrollbar's size(Height/Width).
    */
@@ -75,10 +67,17 @@ export interface UserPassedProps {
    * rail border
    */
   railBorder: null;
+
+  /*
+   *  scrollbar's border-radius.
+   */
+  railBorderRadius?: string | 'auto';
+
   /**
    * rail size
    */
   railSize: string;
+
   /**
    * Whether to keep rail show or not, event content height is not overflow.
    */
@@ -143,9 +142,7 @@ export class Bar extends React.PureComponent<
   static defaultProps = {
     barSize: '6px',
     barBorderRadius: 'auto',
-    gutterOfEnds: null,
-    gutterOfSide: null,
-    barMinSize: 0.1,
+    barMinSize: 0,
 
     railBg: '#01a99a',
     railOp: 0,
@@ -155,17 +152,17 @@ export class Bar extends React.PureComponent<
     railBorderRadius: 'auto',
 
     keepRailShow: false,
-    showBarWhenMove: false,
+    onlyShowBarOnScroll: true,
 
-    barDisappearDuration: 300,
+    barKeepShowTime: 300,
     keepBarShow: false,
     barBg: 'rgb(3, 185, 118)',
     barCls: '',
-    barOp: 1,
+    barOpacity: 1,
 
     scrollButtonEnable: false,
     scrollButtonBg: '#cecece',
-    scrollButtonClickStep: 180,
+    scrollButtonClickStep: 80,
     scrollButtonPressingStep: 30
   };
 
@@ -181,24 +178,21 @@ export class Bar extends React.PureComponent<
   }
   render() {
     const {
-      barsState,
       hideBar,
       otherBarHide,
       opacity,
 
-      gutterOfEnds,
-      gutterOfSide,
       railBg,
       railCls,
       railBorder,
       railOp,
       railSize,
+      railBorderRadius,
 
       barBg,
       barCls,
       barBorderRadius,
       barSize,
-      // barMinSize,
 
       //  scrollButtonBg,
       //  scrollButtonClickStep,
@@ -210,35 +204,61 @@ export class Bar extends React.PureComponent<
     const BAR_MAP = map[barType];
     const classNameOfType = '__is-' + barType;
 
+    // Rail props
     /** Get rgbA format background color */
     const railBackgroundColor = getRgbAColor(railBg + '-' + railOp);
     const endPos = otherBarHide ? 0 : railSize;
     const railStyle: React.CSSProperties = {
-      borderRadius: (barBorderRadius !== 'auto' && barBorderRadius) || barSize,
+      position: 'absolute',
+      zIndex: 1,
+
+      borderRadius:
+        (railBorderRadius !== 'auto' && railBorderRadius) || barSize,
       // backgroundColor: 'blue',
       [BAR_MAP.opsSize]: railSize,
-      [BAR_MAP.posName]: gutterOfEnds || 0,
-      [BAR_MAP.opposName]: gutterOfEnds || endPos,
-      [BAR_MAP.sidePosName]: gutterOfSide || 0,
+      [BAR_MAP.posName]: 0,
+      [BAR_MAP.opposName]: endPos,
+      [BAR_MAP.sidePosName]: 0,
       background: railBackgroundColor,
       border: railBorder
     };
 
-    const barStyle: React.CSSProperties = {
-      backgroundColor: barBg,
-      [BAR_MAP.size]: barsState.size + '%',
-      opacity,
-      [BAR_MAP.opsSize]: barSize,
-      transform: `translate${BAR_MAP.axis}(${barsState.move}%)`
-    };
-
-    const buttonSize = scrollButtonEnable ? barSize : 0;
+    // Bar wrapper props
+    const buttonSize = scrollButtonEnable ? railSize : 0;
     const barWrapStyle: React.CSSProperties = {
-      borderRadius: barBorderRadius || buttonSize,
+      position: 'absolute',
+      borderRadius: (barBorderRadius !== 'auto' && barBorderRadius) || barSize,
       [BAR_MAP.posName]: buttonSize,
       [BAR_MAP.opsSize]: barSize,
       [BAR_MAP.opposName]: buttonSize
     };
+
+    // Bar props
+    const barStyle: React.CSSProperties = {
+      cursor: 'pointer',
+      position: 'absolute',
+      margin: 'auto',
+      transition: 'opacity 0.5s',
+      userSelect: 'none',
+      borderRadius: 'inherit',
+
+      backgroundColor: barBg,
+      [BAR_MAP.size]: this._getBarSize() + '%',
+      opacity,
+      [BAR_MAP.opsSize]: barSize,
+      transform: `translate${BAR_MAP.axis}(${this._getBarPos()}%)`
+    };
+
+    if (barType == 'vertical') {
+      barWrapStyle.width = '100%';
+      // Let bar to be on the center.
+      barStyle.left = 0;
+      barStyle.right = 0;
+    } else {
+      barWrapStyle.height = '100%';
+      barStyle.top = 0;
+      barStyle.bottom = 0;
+    }
 
     return (
       <div
@@ -255,7 +275,9 @@ export class Bar extends React.PureComponent<
           >
             <div
               ref="bar"
-              className={`__bar ${classNameOfType} ${barCls}`}
+              className={`__bar ${classNameOfType} ${barCls} ${
+                opacity == 0 ? '__is-hide' : '__is-show'
+              }`}
               style={barStyle}
             />
           </div>
@@ -271,49 +293,60 @@ export class Bar extends React.PureComponent<
   /**
    * Create a drag event according to current platform
    */
+  _getBarSize() {
+    return Math.max(this.props.barMinSize * 100, this.props.barsState.size);
+  }
+  _getBarPos() {
+    const scrollDistance =
+      this.props.barsState.move * this.props.barsState.size;
+    const pos = (scrollDistance * this._getBarRatio()) / this._getBarSize();
+
+    return pos;
+  }
+  _getBarRatio() {
+    return (100 - this._getBarSize()) / (100 - this.props.barsState.size);
+  }
   _createDragEvent(type: 'touch' | 'mouse'): any {
-    const _this = this;
-    const bar = _this.refs.bar as Element;
-    const rail = _this.refs.rail as Element;
+    const bar = this.refs.bar as Element;
+    const rail = this.refs.barWrap as Element;
     const moveEvent = type == 'touch' ? 'touchmove' : 'mousemove';
     const endEvent = type == 'touch' ? 'touchend' : 'mouseup';
 
-    function dragStart(e) {
+    const dragStart = (e) => {
       e.stopImmediatePropagation();
       e.preventDefault();
       document.onselectstart = () => false;
 
       const event = type == 'touch' ? e.touches[0] : e;
-      const dragPos = event[_this.bar.client];
+      const dragPos = event[this.bar.client];
 
-      _this.startPosition =
-        dragPos - bar.getBoundingClientRect()[_this.bar.posName];
+      this.startPosition =
+        dragPos - bar.getBoundingClientRect()[this.bar.posName];
 
       eventOnOff(document, moveEvent, onDragging);
       eventOnOff(document, endEvent, dragEnd);
 
-      _this.props.setDrag(true);
-    }
-    function onDragging(e) {
+      this.props.setDrag(true);
+    };
+    const onDragging = (e) => {
       const event = type == 'touch' ? e.touches[0] : e;
-      const dragPos = event[_this.bar.client];
-      const delta = dragPos - rail.getBoundingClientRect()[_this.bar.posName];
-      const percent = (delta - _this.startPosition) / rail[_this.bar.offset];
-      _this.props.onDrag(
-        percent,
-        _this.props.horizontal ? 'horizontal' : 'vertical',
-        _this.bar.scrollSize
-      );
-    }
-    function dragEnd() {
+      const dragPos = event[this.bar.client];
+      const delta =
+        (dragPos - rail.getBoundingClientRect()[this.bar.posName]) /
+        this._getBarRatio();
+      const percent = (delta - this.startPosition) / rail[this.bar.offset];
+
+      this.props.onBarDrag(percent, this.bar.axis.toLowerCase());
+    };
+    const dragEnd = () => {
       document.onselectstart = null;
-      _this.startPosition = 0;
+      this.startPosition = 0;
 
       eventOnOff(document, moveEvent, onDragging, false, 'off');
       eventOnOff(document, endEvent, dragEnd, false, 'off');
 
-      _this.props.setDrag(false);
-    }
+      this.props.setDrag(false);
+    };
 
     return dragStart;
   }
@@ -338,7 +371,7 @@ export class Bar extends React.PureComponent<
     eventOnOff(bar, type, event, { passive: false });
   }
   _addRailListener() {
-    const rail = this.refs.rail as Element;
+    const rail = this.refs.barWrap as Element;
     const type = isMobile() ? 'touchstart' : 'mousedown';
 
     eventOnOff(rail, type, (e) => this._handleRailClick(e, type));
@@ -371,36 +404,165 @@ export class Bar extends React.PureComponent<
   }
 }
 
+/**
+ *
+ * @param context bar instance
+ * @param type bar type (vertical | horizontal)
+ * @param env mouse means component is running on PC , or running on moblie
+ * phone.
+ */
+function createScrollButtonEvent(
+  context: Bar,
+  type: 'start' | 'end',
+  env: 'mouse' | 'touch' = 'mouse'
+) {
+  const endEventName = env == 'mouse' ? 'mouseup' : 'touchend';
+  const { scrollButtonClickStep, scrollButtonPressingStep } = context.props;
+  const stepWithDirection =
+    type == 'start' ? -scrollButtonClickStep : scrollButtonClickStep;
+  const mousedownStepWithDirection =
+    type == 'start' ? -scrollButtonPressingStep : scrollButtonPressingStep;
+  const ref = requestAnimationFrame(window);
+
+  let isMouseDown = false;
+  let isMouseout = true;
+  let timeoutId;
+
+  const start = (e) => {
+    /* istanbul ignore if */
+
+    if (3 == e.which) {
+      return;
+    }
+
+    e.nativeEvent.stopImmediatePropagation();
+    e.preventDefault();
+
+    isMouseout = false;
+
+    context.props.onScrollButtonClick(
+      stepWithDirection,
+      context.bar.axis.toLowerCase()
+    );
+
+    eventOnOff(document, endEventName, endPress, false);
+
+    if (env == 'mouse') {
+      const elm = context.refs[type] as Element;
+      eventOnOff(elm, 'mouseenter', enter, false);
+      eventOnOff(elm, 'mouseleave', leave, false);
+    }
+
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => {
+      isMouseDown = true;
+      ref(pressingButton, window);
+    }, 500);
+  };
+
+  const pressingButton = () => {
+    if (isMouseDown && !isMouseout) {
+      context.props.onScrollButtonClick(
+        mousedownStepWithDirection,
+        context.bar.axis.toLowerCase(),
+        false
+      );
+      ref(pressingButton, window);
+    }
+  };
+
+  const endPress = () => {
+    clearTimeout(timeoutId);
+    isMouseDown = false;
+    eventOnOff(document, endEventName, endPress, false, 'off');
+    if (env == 'mouse') {
+      const elm = context.refs[type] as Element;
+      eventOnOff(elm, 'mouseenter', enter, false, 'off');
+      eventOnOff(elm, 'mouseleave', leave, false, 'off');
+    }
+  };
+
+  const enter = () => {
+    isMouseout = false;
+    pressingButton();
+  };
+
+  const leave = () => {
+    isMouseout = true;
+  };
+
+  return start;
+}
+
+/**
+ * create two scroll butons on one rail.
+ * @param context bar instance
+ * @param type bar type (vertical | horizontal)
+ */
 function createScrollbarButton(context: Bar, type) {
   if (!context.props.scrollButtonEnable) {
     return null;
   }
 
-  const size = context.props.barSize;
+  const size = context.props.railSize;
   const borderColor = context.props.scrollButtonBg;
   const wrapperProps = {
     className: normalizeClass(
       '__bar-button',
-      '__bar-button-is-' + this._getType() + '-' + type
+      '__bar-button-is-' + context._getType() + '-' + type
     ),
     style: {
-      [map[this._getType()].scrollButton[type]]: 0,
+      position: 'absolute' as 'absolute',
+      cursor: 'pointer',
+      [map[context._getType()].scrollButton[type]]: 0,
       width: size,
       height: size
     },
     ref: type
   };
-
-  const innerProps = {
-    className: '__bar-button-inner',
-    style: {
-      border: `calc(${size} / 2.5) solid ${borderColor}`
-    }
+  const innerStyle: React.CSSProperties = {
+    border: `calc(${size} / 2.5) solid transparent`,
+    width: '0',
+    height: '0',
+    margin: 'auto',
+    position: 'absolute',
+    top: '0',
+    bottom: '0',
+    right: '0',
+    left: '0'
   };
+  const innerProps: any = {
+    className: '__bar-button-inner',
+    style: innerStyle
+  };
+
+  if (!context.props.horizontal) {
+    if (type == 'start') {
+      innerProps.style.borderBottomColor = borderColor;
+      innerProps.style.transform = 'translateY(-25%)';
+    } else {
+      innerProps.style.borderTopColor = borderColor;
+      innerProps.style.transform = 'translateY(25%)';
+    }
+  } else {
+    if (type == 'start') {
+      innerProps.style.borderRightColor = borderColor;
+      innerProps.style.transform = 'translateX(-25%)';
+    } else {
+      innerProps.style.borderLeftColor = borderColor;
+      innerProps.style.transform = 'translateX(25%)';
+    }
+  }
+
+  if (isMobile()) {
+    innerProps.onTouchstart = createScrollButtonEvent(context, type, 'touch');
+  } else {
+    innerProps.onMouseDown = createScrollButtonEvent(context, type);
+  }
 
   return (
     <div {...wrapperProps}>
-      <div {...innerProps} />
+      <div {...innerProps} ref={type} />
     </div>
   );
 }

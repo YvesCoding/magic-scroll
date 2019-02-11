@@ -1,9 +1,9 @@
 import * as React from 'react';
 import detectResize from 'third-party/resize-detector';
-import { normalizeSize, getDom } from 'shared/Util/dom';
-import { Subscription } from 'shared/Util/subscription';
+import { normalizeSize, getDom } from 'shared/util/dom';
+import { Subscription } from 'shared/util/subscription';
 
-import View from './view';
+import Panel from './panel';
 import { smoothScroll } from 'third-party/easingPattern/smoothScroll';
 import { enhance } from 'magic-scroll-base';
 
@@ -94,7 +94,7 @@ class MagicScrollNative extends React.PureComponent<
   /** trigger beofore component will unmount */
   static unmount_key = 'UNMOUNT_SUBSCRIBE';
 
-  panel: React.RefObject<View>;
+  panel: React.RefObject<Panel>;
 
   /** Subscription */
   subscription: Subscription;
@@ -103,7 +103,7 @@ class MagicScrollNative extends React.PureComponent<
   constructor(props) {
     super(props);
 
-    this.panel = React.createRef<View>();
+    this.panel = React.createRef<Panel>();
     /**
      *  This state is to control style of container and panel
      *  vBar --> vertical bar
@@ -144,7 +144,7 @@ class MagicScrollNative extends React.PureComponent<
     const { verticalNativeBarPos } = this.props;
     const barState = this.state.barState;
     return (
-      <View
+      <Panel
         resize={detectResize}
         barPos={verticalNativeBarPos}
         handleResize={this._handleResize}
@@ -157,7 +157,7 @@ class MagicScrollNative extends React.PureComponent<
         scrollingY={scrollingY}
       >
         {children}
-      </View>
+      </Panel>
     );
   }
 
@@ -261,20 +261,10 @@ class MagicScrollNative extends React.PureComponent<
     console.log('scroll complelte...');
   }
 
-  _onDragBar(percent, type, scrollSize) {
-    const pos = type == 'vertical' ? 'y' : 'x';
-    const panelElm = this._getDomByRef('panel');
-    this.scrollTo(
-      {
-        [pos]: percent * panelElm[scrollSize]
-      },
-      false /* animate */
-    );
-  }
-
-  _onBarDrag({ direction, percent, size }) {
+  _onBarDrag(direction: 'x' | 'y', percent) {
     const elm = this._getDomByRef('panel');
-    const dest = elm[size] * percent;
+    const dest =
+      elm[direction == 'x' ? 'scrollWidth' : 'scrollHeight'] * percent;
 
     this.scrollTo(
       {
@@ -284,10 +274,35 @@ class MagicScrollNative extends React.PureComponent<
     );
   }
 
+  _getPosition() {
+    const { scrollTop, scrollLeft } = this._getDomByRef('panel') as Element;
+    return {
+      scrollTop,
+      scrollLeft
+    };
+  }
+
   /** Public methods */
 
   scrollTo({ x, y }: Dest, animate: boolean = true) {
     this._scrollTo(x, y, animate);
+  }
+  scrollBy({ x, y }: Dest, animate: boolean = true) {
+    const {
+      scrollWidth,
+      scrollHeight,
+      clientWidth,
+      clientHeight
+    } = this._getDomByRef('panel') as Element;
+    let { scrollLeft, scrollTop } = this._getPosition();
+    if (x) {
+      scrollLeft += normalizeSize(x, scrollWidth - clientWidth);
+    }
+    if (y) {
+      scrollTop += normalizeSize(y, scrollHeight - clientHeight);
+    }
+
+    this._scrollTo(scrollLeft, scrollTop, animate);
   }
   refresh() {
     this._refresh();

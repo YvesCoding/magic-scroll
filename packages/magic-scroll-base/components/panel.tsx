@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { normalizeClass } from 'shared/Util/class';
+import { normalizeClass } from 'shared/util/class';
 
 /* ----------------- Type End -------------------------- */
 

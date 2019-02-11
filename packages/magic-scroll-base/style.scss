@@ -29,36 +29,19 @@
   }
 
   .__rail {
-    position: absolute;
-    z-index: 1;
   }
 
   .__bar {
-    cursor: pointer;
-    position: absolute;
-    margin: auto;
-    transition: opacity 0.5s;
-    user-select: none;
-    border-radius: inherit;
     &.is-vertical {
-      top: 0;
-      left: 0;
-      right: 0;
     }
     &.is-horizontal {
-      left: 0;
-      top: 0;
-      bottom: 0;
     }
   }
 
   .__bar-wrap {
-    position: absolute;
     &.is-vertical {
-      width: 100%;
     }
     &.is-horizontal {
-      height: 100%;
     }
   }
 

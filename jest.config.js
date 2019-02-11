@@ -14,6 +14,7 @@ module.exports = {
     '^.+\\.jsx?$': 'babel7-jest',
     '^.+\\.tsx?$': 'ts-jest'
   },
+  snapshotSerializers: ['enzyme-to-json/serializer'],
   setupFiles: ['<rootDir>/node_modules/regenerator-runtime/runtime'],
   setupTestFrameworkScriptFile: '<rootDir>/setupTest.js',
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node']

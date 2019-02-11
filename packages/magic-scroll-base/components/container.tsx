@@ -1,6 +1,6 @@
 import * as React from 'react';
-import { normalizeClass } from 'shared/Util/class';
-import { isMobile } from 'shared/Util/compitable';
+import { normalizeClass } from 'shared/util/class';
+import { isMobile } from 'shared/util/compitable';
 
 /* ---------------- Type Definations -------------------- */
 
@@ -36,6 +36,7 @@ export default class BaseScroll extends React.PureComponent<Props> {
       onEnter,
       onLeave,
       onMove,
+      style = {},
       ...others
     } = this.props;
 
@@ -43,7 +44,8 @@ export default class BaseScroll extends React.PureComponent<Props> {
 
     const ch = <>{children}</>;
 
-    const style = { position: 'relative', overflow: 'hidden' };
+    style.position = 'relative';
+    style.overflow = 'hidden';
 
     let eventObj: any = {};
 
@@ -68,9 +70,9 @@ export default class BaseScroll extends React.PureComponent<Props> {
         {
           ref: 'container',
           className,
-          style,
           ...eventObj,
-          ...others
+          ...others,
+          style
         },
         ch
       );
@@ -79,9 +81,9 @@ export default class BaseScroll extends React.PureComponent<Props> {
         <div
           ref="container"
           {...eventObj}
-          style={style}
           className={className}
           {...others}
+          style={style}
         >
           {ch}
         </div>
