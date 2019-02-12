@@ -6,5 +6,9 @@
   "private": true,
   "keywords": [],
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "shared": "0.0.1",
+    "third-party": "0.0.1"
+  }
 }

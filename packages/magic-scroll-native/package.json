@@ -9,6 +9,11 @@
     "react",
     "scrollbar"
   ],
+  "dependencies": {
+    "magic-scroll-base": "0.0.1",
+    "shared": "0.0.1",
+    "third-party": "0.0.1"
+  },
   "author": "Yves Wang",
   "license": "MIT"
 }
