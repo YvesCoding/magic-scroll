@@ -30,17 +30,6 @@ export function getPrefix(global: any) {
   return vendorPrefix;
 }
 
-export function isSupportGivenStyle(property, value) {
-  const compatibleValue = `-${getPrefix(window)}-${value}`;
-  const testElm = document.createElement('div');
-  testElm.style[property] = compatibleValue;
-  if (testElm.style[property] == compatibleValue) {
-    return compatibleValue;
-  }
-  /* istanbul ignore next */
-  return false;
-}
-
 /**
  * Get a style with a browser prefix
  */
@@ -49,6 +38,7 @@ export function getComplitableStyle(property, value) {
   const testElm = document.createElement('div');
   testElm.style[property] = compatibleValue;
   if (testElm.style[property] == compatibleValue) {
+    /* istanbul ignore next */
     return compatibleValue;
   }
   /* istanbul ignore next */

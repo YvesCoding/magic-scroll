@@ -1,6 +1,6 @@
 // import React from 'react';
 
-import { shallow, mount, render } from 'enzyme';
+import { mount } from 'enzyme';
 import NativeBar from '../index';
 import { createbar } from '../../../test/util';
 
@@ -216,6 +216,26 @@ describe('Native Bar Props Test', function() {
   });
 
   // Props: barCls
+  it("Bar's opacity should be 0.5", async function() {
+    const wrapper = mount(
+      createbar(NativeBar, {
+        props: {
+          barOpacity: 0.5
+        }
+      })
+    );
+
+    wrapper.find('.__magic-scroll').simulate('mouseenter');
+
+    expect(
+      wrapper.find('.__bar.__is-vertical').getDOMNode().style.opacity
+    ).toBe('0.5');
+    expect(
+      wrapper.find('.__bar.__is-horizontal').getDOMNode().style.opacity
+    ).toBe('0.5');
+  });
+
+  // Props: barCls
   it("Bar's class should contain foo", async function() {
     const wrapper = mount(
       createbar(NativeBar, {
@@ -251,5 +271,97 @@ describe('Native Bar Props Test', function() {
 
     expect(vRailBg).toBe('rgba(255, 0, 0, 0)');
     expect(hRailBg).toBe('rgba(255, 0, 0, 0)');
+  });
+
+  // Props: railCls
+  it("Rail's class should contain foo", async function() {
+    const wrapper = mount(
+      createbar(NativeBar, {
+        props: {
+          railCls: 'bar'
+        }
+      })
+    );
+
+    expect(wrapper.find('.__rail.__is-vertical').hasClass('bar')).toBe(true);
+    expect(wrapper.find('.__rail.__is-horizontal').hasClass('bar')).toBe(true);
+  });
+
+  // Props: railSize
+  it("Rail's size should be 15px.", async function() {
+    const wrapper = mount(
+      createbar(NativeBar, {
+        props: {
+          railSize: '15px'
+        }
+      })
+    );
+
+    expect(wrapper.find('.__rail.__is-vertical').getDOMNode().style.width).toBe(
+      '15px'
+    );
+    expect(
+      wrapper.find('.__rail.__is-horizontal').getDOMNode().style.height
+    ).toBe('15px');
+  });
+
+  // Props: railBorderRadius
+  it("Rail's border radius should be 8px.", async function() {
+    const wrapper = mount(
+      createbar(NativeBar, {
+        props: {
+          railBorderRadius: '8px'
+        }
+      })
+    );
+
+    expect(
+      wrapper.find('.__rail.__is-vertical').getDOMNode().style.borderRadius
+    ).toBe('8px');
+    expect(
+      wrapper.find('.__rail.__is-horizontal').getDOMNode().style.borderRadius
+    ).toBe('8px');
+  });
+
+  // Props: keepRailShow
+  it("Rail's border radius should be 8px.", async function() {
+    const wrapper = mount(
+      createbar(NativeBar, {
+        props: {
+          keepRailShow: true
+        },
+        childWid: 50,
+        childHei: 50
+      })
+    );
+
+    expect(wrapper.find('.__rail.__is-horizontal').length > 0).toBe(true);
+    expect(wrapper.find('.__rail.__is-vertical').length > 0).toBe(true);
+  });
+
+  // Props: scrollButtonEnable
+  it('Scroll button can be seen.', async function() {
+    const wrapper = mount(
+      createbar(NativeBar, {
+        props: {
+          scrollButtonEnable: true
+        }
+      })
+    );
+
+    expect(wrapper.find('.__bar-button').length).toBe(4);
+  });
+
+  // Props: scrollButtonEnable
+  it('Scroll button can be seen.', async function() {
+    const wrapper = mount(
+      createbar(NativeBar, {
+        props: {
+          scrollButtonEnable: true
+        }
+      })
+    );
+
+    expect(wrapper.find('.__bar-button').length).toBe(4);
   });
 });

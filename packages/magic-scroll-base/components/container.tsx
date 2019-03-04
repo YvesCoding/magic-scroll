@@ -91,9 +91,5 @@ export default class BaseScroll extends React.PureComponent<Props> {
     }
   }
 
-  componentDidMount() {
-    console.log('mounted...');
-  }
-
   /* ---------------- Methods -------------------- */
 }

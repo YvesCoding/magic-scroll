@@ -22,7 +22,7 @@
  * rendering. This eases a lot of cases where it might be pretty complex to break down a state
  * based on the pure time difference.
  */
-import { requestAnimationFrame } from './ref';
+import { requestAnimationFrame } from './requestAnimationFrame';
 
 var time =
   Date.now ||
@@ -151,6 +151,10 @@ core.effect.Animate = {
           step(true);
           dropCounter++;
         }
+      }
+
+      if (!running[id]) {
+        return;
       }
 
       // Compute percent value

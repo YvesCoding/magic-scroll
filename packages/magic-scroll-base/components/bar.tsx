@@ -4,7 +4,7 @@ import { eventOnOff } from 'shared/util/dom';
 import { isMobile } from 'shared/util/compitable';
 import { cached } from 'shared/util/object';
 import { normalizeClass } from 'shared/util/class';
-import { requestAnimationFrame } from 'third-party/scroller/ref';
+import { requestAnimationFrame } from 'third-party/scroller/requestAnimationFrame';
 
 /* --------------- Type Definations ---------------- */
 
@@ -56,7 +56,7 @@ export interface UserPassedProps {
   /**
    * Rail's opacity.
    */
-  railOp: number;
+  railOpacity: number;
 
   /**
    * Rail's calss.
@@ -92,6 +92,11 @@ export interface UserPassedProps {
    * Bar's class.
    */
   barCls: number;
+
+  /**
+   * Bar's opacity.
+   */
+  barOpacity: number;
 
   /*
    * scroll button enable or not
@@ -145,7 +150,7 @@ export class Bar extends React.PureComponent<
     barMinSize: 0,
 
     railBg: '#01a99a',
-    railOp: 0,
+    railOpacity: 0,
     railCls: '',
     railSize: '6px',
     railBorder: null,
@@ -185,7 +190,7 @@ export class Bar extends React.PureComponent<
       railBg,
       railCls,
       railBorder,
-      railOp,
+      railOpacity,
       railSize,
       railBorderRadius,
 
@@ -193,6 +198,7 @@ export class Bar extends React.PureComponent<
       barCls,
       barBorderRadius,
       barSize,
+      barOpacity,
 
       //  scrollButtonBg,
       //  scrollButtonClickStep,
@@ -206,7 +212,7 @@ export class Bar extends React.PureComponent<
 
     // Rail props
     /** Get rgbA format background color */
-    const railBackgroundColor = getRgbAColor(railBg + '-' + railOp);
+    const railBackgroundColor = getRgbAColor(railBg + '-' + railOpacity);
     const endPos = otherBarHide ? 0 : railSize;
     const railStyle: React.CSSProperties = {
       position: 'absolute',
@@ -244,7 +250,7 @@ export class Bar extends React.PureComponent<
 
       backgroundColor: barBg,
       [BAR_MAP.size]: this._getBarSize() + '%',
-      opacity,
+      opacity: opacity == 0 ? 0 : barOpacity,
       [BAR_MAP.opsSize]: barSize,
       transform: `translate${BAR_MAP.axis}(${this._getBarPos()}%)`
     };
@@ -354,7 +360,7 @@ export class Bar extends React.PureComponent<
     if (this.refs.bar) {
       this._addBarListener();
     }
-    if (this.refs.rail) {
+    if (this.refs.barWrap) {
       this._addRailListener();
     }
   }
@@ -576,7 +582,7 @@ export default function createBar(
   const isVBarHide = !vBarState.size;
   const isHBarHide = !hBarState.size;
   const vBar =
-    vBarState.size && !barProps.keepRailShow ? (
+    vBarState.size || barProps.keepRailShow ? (
       <Bar
         {...{
           ...barProps,
@@ -593,7 +599,7 @@ export default function createBar(
     ) : null;
 
   const hBar =
-    vBarState.size && !barProps.keepRailShow ? (
+    vBarState.size || barProps.keepRailShow ? (
       <Bar
         {...{
           ...barProps,

@@ -11,13 +11,16 @@ class Test extends React.PureComponent {
       <div style={{ height: '200px', width: '200px' }}>
         <ScrollBar
           ref="sss"
-          // scrollButtonEnable={true}
+          scrollButtonEnable={true}
           onlyShowBarOnScroll={true}
+          keepRailShow={true}
           //  keepBarShow={true}
           railSize="20px"
-          barKeepShowTime={2000}
+          barKeepShowTime={500}
+          sizeStrategy="foo"
+          wheelScrollDuration={500}
         >
-          <div style={{ height: '400px', width: '400px' }} />
+          <div style={{ height: '1400px', width: '1400px' }} />
         </ScrollBar>
       </div>
     );

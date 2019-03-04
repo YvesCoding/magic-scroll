@@ -75,10 +75,49 @@ const getContract = elm => {
 };
 
 /**
+ *  Compatible to scroller's animation function
+ */
+function createEasingFunction(easing, easingPattern) {
+  return function (time) {
+    return easingPattern(easing, time);
+  };
+}
+
+/**
+ * Calculate the easing pattern
+ * @link https://github.com/cferdinandi/smooth-scroll/blob/master/src/js/smooth-scroll.js
+ * modified by wangyi7099
+ * @param {String} type Easing pattern
+ * @param {Number} time Time animation should take to complete
+ * @returns {Number}
+ */
+function easingPattern(easing, time) {
+  let pattern = null;
+  /* istanbul ignore next */
+  {
+    // Default Easing Patterns
+    if (easing === 'easeInQuad') pattern = time * time; // accelerating from zero velocity
+    if (easing === 'easeOutQuad') pattern = time * (2 - time); // decelerating to zero velocity
+    if (easing === 'easeInOutQuad') pattern = time < 0.5 ? 2 * time * time : -1 + (4 - 2 * time) * time; // acceleration until halfway, then deceleration
+    if (easing === 'easeInCubic') pattern = time * time * time; // accelerating from zero velocity
+    if (easing === 'easeOutCubic') pattern = --time * time * time + 1; // decelerating to zero velocity
+    if (easing === 'easeInOutCubic') pattern = time < 0.5 ? 4 * time * time * time : (time - 1) * (2 * time - 2) * (2 * time - 2) + 1; // acceleration until halfway, then deceleration
+    if (easing === 'easeInQuart') pattern = time * time * time * time; // accelerating from zero velocity
+    if (easing === 'easeOutQuart') pattern = 1 - --time * time * time * time; // decelerating to zero velocity
+    if (easing === 'easeInOutQuart') pattern = time < 0.5 ? 8 * time * time * time * time : 1 - 8 * --time * time * time * time; // acceleration until halfway, then deceleration
+    if (easing === 'easeInQuint') pattern = time * time * time * time * time; // accelerating from zero velocity
+    if (easing === 'easeOutQuint') pattern = 1 + --time * time * time * time * time; // decelerating to zero velocity
+    if (easing === 'easeInOutQuint') pattern = time < 0.5 ? 16 * time * time * time * time * time : 1 + 16 * --time * time * time * time * time; // acceleration until halfway, then deceleration
+  }
+  return pattern || time; // no easing, no acceleration
+}
+
+/**
  * Get a html element from a component.
  */
 const getDom = ref => {
     if (!ref) {
+        /* istanbul ignore next */
         return null;
     }
     const _realDom = ReactDom.findDOMNode(ref);
@@ -103,10 +142,11 @@ function normalizeSize(size, amount) {
     let number = /(-?\d+(?:\.\d+?)?)%$/.exec(size + '');
     if (!number) {
         number = size - 0;
-    } else {
-        number = number[1] - 0;
-        number = amount * number / 100;
-    }
+    } /* istanbul ignore next */
+    else {
+            number = number[1] - 0;
+            number = amount * number / 100;
+        }
     return number;
 }
 
@@ -241,7 +281,6 @@ function getPrefix(global) {
     }[engine];
     return vendorPrefix;
 }
-
 /**
  * Get a style with a browser prefix
  */
@@ -250,6 +289,7 @@ function getComplitableStyle(property, value) {
     const testElm = document.createElement('div');
     testElm.style[property] = compatibleValue;
     if (testElm.style[property] == compatibleValue) {
+        /* istanbul ignore next */
         return compatibleValue;
     }
     /* istanbul ignore next */
@@ -281,7 +321,10 @@ function cached(fn) {
         return hit || (cache[str] = fn(str));
     };
 }
-const capitalize = cached(str => {
+const capitalize = cached(
+/* istanbul ignore next */
+str => {
+    /* istanbul ignore next */
     return str.charAt(0).toUpperCase() + str.slice(1);
 });
 
@@ -290,6 +333,7 @@ class View extends React.PureComponent {
         super(props);
         // bind internal methods
         this._handleScroll = this._handleScroll.bind(this);
+        this._handleWheel = this._handleWheel.bind(this);
         this.subscription = new Subscription();
     }
     render() {
@@ -347,8 +391,39 @@ class View extends React.PureComponent {
     }
     /** Internal Medthds */
     _handleScroll(e) {
-        console.log('handle scrolling...');
         this.props.handleScroll(e);
+    }
+    _handleWheel(event) {
+        event.stopPropagation();
+        event.preventDefault();
+        let delta = 0;
+        let dir;
+        if (event.wheelDelta) {
+            if (event.deltaY) {
+                dir = 'y';
+                delta = event.deltaY;
+            } else if (event.deltaYX) {
+                delta = event.deltaX;
+                dir = 'x';
+            } else {
+                if (event.shiftKey) {
+                    dir = 'x';
+                } else {
+                    dir = 'y';
+                }
+                delta = -1 * event.wheelDelta / 2;
+            }
+        } else if (event.detail) {
+            // horizontal scroll
+            if (event.axis == 1) {
+                dir = 'x';
+            } else if (event.axis == 2) {
+                // vertical scroll
+                dir = 'y';
+            }
+            delta = event.detail * 16;
+        }
+        this.props.handleWheel(dir, delta);
     }
     _detectResize(element) {
         if (element.removeResize) {
@@ -369,8 +444,12 @@ class View extends React.PureComponent {
     _addEvent() {
         const panelElm = getDom(this.refs.panel);
         eventOnOff(panelElm, 'scroll', this._handleScroll);
+        eventOnOff(panelElm, 'mousewheel', this._handleWheel);
+        eventOnOff(panelElm, 'onMouseWheel', this._handleWheel);
         this.subscription.subscribe(View.unmount_key, () => {
             eventOnOff(panelElm, 'scroll', this._handleScroll, false, 'off');
+            eventOnOff(panelElm, 'mousewheel', this._handleWheel, false, 'off');
+            eventOnOff(panelElm, 'onMouseWheel', this._handleWheel, false, 'off');
         });
     }
 }
@@ -378,42 +457,84 @@ View.displayName = 'magic-scroll-panel-native';
 /** trigger beofore component will unmount */
 View.unmount_key = 'UNMOUNT_SUBSCRIBE';
 
+const map = {
+    vertical: {
+        size: 'height',
+        opsSize: 'width',
+        posName: 'top',
+        opposName: 'bottom',
+        sidePosName: 'right',
+        page: 'pageY',
+        scroll: 'scrollTop',
+        scrollSize: 'scrollHeight',
+        offset: 'offsetHeight',
+        client: 'clientY',
+        axis: 'Y',
+        scrollButton: {
+            start: 'top',
+            end: 'bottom'
+        }
+    },
+    horizontal: {
+        size: 'width',
+        opsSize: 'height',
+        posName: 'left',
+        opposName: 'right',
+        sidePosName: 'bottom',
+        page: 'pageX',
+        scroll: 'scrollLeft',
+        scrollSize: 'scrollWidth',
+        offset: 'offsetWidth',
+        client: 'clientX',
+        axis: 'X',
+        scrollButton: {
+            start: 'left',
+            end: 'right'
+        }
+    }
+};
+
 /**
- *  Compatible to scroller's animation function
+ * Get a html element from a component.
  */
-function createEasingFunction(easing, easingPattern) {
-  return function (time) {
-    return easingPattern(easing, time);
-  };
+const getDom$1 = ref => {
+    if (!ref) {
+        /* istanbul ignore next */
+        return null;
+    }
+    const _realDom = ReactDom.findDOMNode(ref);
+    return _realDom;
+};
+/**
+ * Deep merge from tow objects
+ */
+// export function merge(source: any, dest: any) {}
+/**
+ * Add or remove a event listener
+ */
+const eventOnOff$1 = (dom, eventName, hander, capture, type = 'on') => {
+    type == 'on' ? dom.addEventListener(eventName, hander, capture) : dom.removeEventListener(eventName, hander, capture);
+};
+/**
+ * If value is a percent, convert it to a numeric one.
+ * such as:
+ * 85% -> size * 0.85
+ */
+
+function isMobile$1() {
+    return 'ontouchstart' in window;
 }
 
 /**
- * Calculate the easing pattern
- * @link https://github.com/cferdinandi/smooth-scroll/blob/master/src/js/smooth-scroll.js
- * modified by wangyi7099
- * @param {String} type Easing pattern
- * @param {Number} time Time animation should take to complete
- * @returns {Number}
+ * Get a style with a browser prefix
  */
-function easingPattern(easing, time) {
-  let pattern = null;
-  /* istanbul ignore next */
-  {
-    // Default Easing Patterns
-    if (easing === 'easeInQuad') pattern = time * time; // accelerating from zero velocity
-    if (easing === 'easeOutQuad') pattern = time * (2 - time); // decelerating to zero velocity
-    if (easing === 'easeInOutQuad') pattern = time < 0.5 ? 2 * time * time : -1 + (4 - 2 * time) * time; // acceleration until halfway, then deceleration
-    if (easing === 'easeInCubic') pattern = time * time * time; // accelerating from zero velocity
-    if (easing === 'easeOutCubic') pattern = --time * time * time + 1; // decelerating to zero velocity
-    if (easing === 'easeInOutCubic') pattern = time < 0.5 ? 4 * time * time * time : (time - 1) * (2 * time - 2) * (2 * time - 2) + 1; // acceleration until halfway, then deceleration
-    if (easing === 'easeInQuart') pattern = time * time * time * time; // accelerating from zero velocity
-    if (easing === 'easeOutQuart') pattern = 1 - --time * time * time * time; // decelerating to zero velocity
-    if (easing === 'easeInOutQuart') pattern = time < 0.5 ? 8 * time * time * time * time : 1 - 8 * --time * time * time * time; // acceleration until halfway, then deceleration
-    if (easing === 'easeInQuint') pattern = time * time * time * time * time; // accelerating from zero velocity
-    if (easing === 'easeOutQuint') pattern = 1 + --time * time * time * time * time; // decelerating to zero velocity
-    if (easing === 'easeInOutQuint') pattern = time < 0.5 ? 16 * time * time * time * time * time : 1 + 16 * --time * time * time * time * time; // acceleration until halfway, then deceleration
-  }
-  return pattern || time; // no easing, no acceleration
+
+function cached$1(fn) {
+    const cache = Object.create(null);
+    return function cachedFn(str) {
+        const hit = cache[str];
+        return hit || (cache[str] = fn(str));
+    };
 }
 
 function requestAnimationFrame(global) {
@@ -472,290 +593,6 @@ function requestAnimationFrame(global) {
   };
 }
 
-/*
- * Scroller
- * http://github.com/zynga/scroller
- *
- * Copyright 2011, Zynga Inc.
- * Licensed under the MIT License.
- * https://raw.github.com/zynga/scroller/master/MIT-LICENSE.txt
- *
- * Based on the work of: Unify Project (unify-project.org)
- * http://unify-project.org
- * Copyright 2011, Deutsche Telekom AG
- * License: MIT + Apache (V2)
- */
-
-/**
- * Generic animation class with support for dropped frames both optional easing and duration.
- *
- * Optional duration is useful when the lifetime is defined by another condition than time
- * e.g. speed of an animating object, etc.
- *
- * Dropped frame logic allows to keep using the same updater logic independent from the actual
- * rendering. This eases a lot of cases where it might be pretty complex to break down a state
- * based on the pure time difference.
- */
-var time = Date.now || function () {
-  return +new Date();
-};
-var desiredFrames = 60;
-var millisecondsPerSecond = 1000;
-var running = {};
-var counter = 1;
-
-const core = { effect: {} };
-let global = null;
-
-if (typeof window !== 'undefined') {
-  global = window;
-} else {
-  global = {};
-}
-
-core.effect.Animate = {
-  /**
-   * A requestAnimationFrame wrapper / polyfill.
-   *
-   * @param callback {Function} The callback to be invoked before the next repaint.
-   * @param root {HTMLElement} The root element for the repaint
-   */
-  requestAnimationFrame: requestAnimationFrame(global),
-  /**
-   * Stops the given animation.
-   *
-   * @param id {Integer} Unique animation ID
-   * @return {Boolean} Whether the animation was stopped (aka, was running before)
-   */
-  stop: function (id) {
-    var cleared = running[id] != null;
-    if (cleared) {
-      running[id] = null;
-    }
-
-    return cleared;
-  },
-
-  /**
-   * Whether the given animation is still running.
-   *
-   * @param id {Integer} Unique animation ID
-   * @return {Boolean} Whether the animation is still running
-   */
-  isRunning: function (id) {
-    return running[id] != null;
-  },
-
-  /**
-   * Start the animation.
-   *
-   * @param stepCallback {Function} Pointer to function which is executed on every step.
-   *   Signature of the method should be `function(percent, now, virtual) { return continueWithAnimation; }`
-   * @param verifyCallback {Function} Executed before every animation step.
-   *   Signature of the method should be `function() { return continueWithAnimation; }`
-   * @param completedCallback {Function}
-   *   Signature of the method should be `function(droppedFrames, finishedAnimation) {}`
-   * @param duration {Integer} Milliseconds to run the animation
-   * @param easingMethod {Function} Pointer to easing function
-   *   Signature of the method should be `function(percent) { return modifiedValue; }`
-   * @param root {Element ? document.body} Render root, when available. Used for internal
-   *   usage of requestAnimationFrame.
-   * @return {Integer} Identifier of animation. Can be used to stop it any time.
-   */
-  start: function (stepCallback, verifyCallback, completedCallback, duration, easingMethod, root) {
-    var start = time();
-    var lastFrame = start;
-    var percent = 0;
-    var dropCounter = 0;
-    var id = counter++;
-
-    if (!root) {
-      root = document.body;
-    }
-
-    // Compacting running db automatically every few new animations
-    if (id % 20 === 0) {
-      var newRunning = {};
-      for (var usedId in running) {
-        newRunning[usedId] = true;
-      }
-      running = newRunning;
-    }
-
-    // This is the internal step method which is called every few milliseconds
-    var step = function (virtual) {
-      // Normalize virtual value
-      var render = virtual !== true;
-
-      // Get current time
-      var now = time();
-
-      // Verification is executed before next animation step
-      if (!running[id] || verifyCallback && !verifyCallback(id)) {
-        running[id] = null;
-        completedCallback && completedCallback(desiredFrames - dropCounter / ((now - start) / millisecondsPerSecond), id, false);
-        return;
-      }
-
-      // For the current rendering to apply let's update omitted steps in memory.
-      // This is important to bring internal state variables up-to-date with progress in time.
-      if (render) {
-        var droppedFrames = Math.round((now - lastFrame) / (millisecondsPerSecond / desiredFrames)) - 1;
-        for (var j = 0; j < Math.min(droppedFrames, 4); j++) {
-          step(true);
-          dropCounter++;
-        }
-      }
-
-      // Compute percent value
-      if (duration) {
-        percent = (now - start) / duration;
-        if (percent > 1) {
-          percent = 1;
-        }
-      }
-
-      // Execute step callback, then...
-      var value = easingMethod ? easingMethod(percent) : percent;
-      if ((stepCallback(value, now, render) === false || percent === 1) && render) {
-        running[id] = null;
-        completedCallback && completedCallback(desiredFrames - dropCounter / ((now - start) / millisecondsPerSecond), id, percent === 1 || duration == null);
-      } else if (render) {
-        lastFrame = now;
-        core.effect.Animate.requestAnimationFrame(step, root);
-      }
-    };
-
-    // Mark as running
-    running[id] = true;
-
-    // Init first step
-    core.effect.Animate.requestAnimationFrame(step, root);
-
-    // Return unique animation ID
-    return id;
-  }
-};
-
-function smoothScroll(elm, deltaX, deltaY, speed, easing, scrollingComplete) {
-  const startLocationY = elm.scrollTop;
-  const startLocationX = elm.scrollLeft;
-  let positionX = startLocationX;
-  let positionY = startLocationY;
-  /**
-   * keep the limit of scroll delta.
-   */
-  /* istanbul ignore next */
-  if (startLocationY + deltaY < 0) {
-    deltaY = -startLocationY;
-  }
-  const scrollHeight = elm.scrollHeight;
-  if (startLocationY + deltaY > scrollHeight) {
-    deltaY = scrollHeight - startLocationY;
-  }
-  if (startLocationX + deltaX < 0) {
-    deltaX = -startLocationX;
-  }
-  if (startLocationX + deltaX > elm.scrollWidth) {
-    deltaX = elm.scrollWidth - startLocationX;
-  }
-
-  const easingMethod = createEasingFunction(easing, easingPattern);
-
-  const stepCallback = percentage => {
-    positionX = startLocationX + deltaX * percentage;
-    positionY = startLocationY + deltaY * percentage;
-    elm.scrollTop = Math.floor(positionY);
-    elm.scrollLeft = Math.floor(positionX);
-  };
-
-  const verifyCallback = () => {
-    return Math.abs(positionY - startLocationY) <= Math.abs(deltaY) || Math.abs(positionX - startLocationX) <= Math.abs(deltaX);
-  };
-
-  core.effect.Animate.start(stepCallback, verifyCallback, scrollingComplete, speed, easingMethod);
-}
-
-const map = {
-    vertical: {
-        size: 'height',
-        opsSize: 'width',
-        posName: 'top',
-        opposName: 'bottom',
-        sidePosName: 'right',
-        page: 'pageY',
-        scroll: 'scrollTop',
-        scrollSize: 'scrollHeight',
-        offset: 'offsetHeight',
-        client: 'clientY',
-        axis: 'Y',
-        scrollButton: {
-            start: 'top',
-            end: 'bottom'
-        }
-    },
-    horizontal: {
-        size: 'width',
-        opsSize: 'height',
-        posName: 'left',
-        opposName: 'right',
-        sidePosName: 'bottom',
-        page: 'pageX',
-        scroll: 'scrollLeft',
-        scrollSize: 'scrollWidth',
-        offset: 'offsetWidth',
-        client: 'clientX',
-        axis: 'X',
-        scrollButton: {
-            start: 'left',
-            end: 'right'
-        }
-    }
-};
-
-/**
- * Get a html element from a component.
- */
-const getDom$1 = ref => {
-    if (!ref) {
-        return null;
-    }
-    const _realDom = ReactDom.findDOMNode(ref);
-    return _realDom;
-};
-/**
- * Deep merge from tow objects
- */
-// export function merge(source: any, dest: any) {}
-/**
- * Add or remove a event listener
- */
-const eventOnOff$1 = (dom, eventName, hander, capture, type = 'on') => {
-    type == 'on' ? dom.addEventListener(eventName, hander, capture) : dom.removeEventListener(eventName, hander, capture);
-};
-/**
- * If value is a percent, convert it to a numeric one.
- * such as:
- * 85% -> size * 0.85
- */
-
-function isMobile$1() {
-    return 'ontouchstart' in window;
-}
-
-
-/**
- * Get a style with a browser prefix
- */
-
-function cached$1(fn) {
-    const cache = Object.create(null);
-    return function cachedFn(str) {
-        const hit = cache[str];
-        return hit || (cache[str] = fn(str));
-    };
-}
-
 /* --------------- Type End ---------------- */
 const rgbReg = /rgb\(/;
 const extractRgbColor = /rgb\((.*)\)/;
@@ -782,7 +619,7 @@ class Bar extends React.PureComponent {
         this._handleRailClick = this._handleRailClick.bind(this);
     }
     render() {
-        const { hideBar, otherBarHide, opacity, railBg, railCls, railBorder, railOp, railSize, railBorderRadius, barBg, barCls, barBorderRadius, barSize,
+        const { hideBar, otherBarHide, opacity, railBg, railCls, railBorder, railOpacity, railSize, railBorderRadius, barBg, barCls, barBorderRadius, barSize, barOpacity,
             //  scrollButtonBg,
             //  scrollButtonClickStep,
             scrollButtonEnable
@@ -793,7 +630,7 @@ class Bar extends React.PureComponent {
         const classNameOfType = '__is-' + barType;
         // Rail props
         /** Get rgbA format background color */
-        const railBackgroundColor = getRgbAColor(railBg + '-' + railOp);
+        const railBackgroundColor = getRgbAColor(railBg + '-' + railOpacity);
         const endPos = otherBarHide ? 0 : railSize;
         const railStyle = {
             position: 'absolute',
@@ -826,7 +663,7 @@ class Bar extends React.PureComponent {
             borderRadius: 'inherit',
             backgroundColor: barBg,
             [BAR_MAP.size]: this._getBarSize() + '%',
-            opacity,
+            opacity: opacity == 0 ? 0 : barOpacity,
             [BAR_MAP.opsSize]: barSize,
             transform: `translate${BAR_MAP.axis}(${this._getBarPos()}%)`
         };
@@ -896,7 +733,7 @@ class Bar extends React.PureComponent {
         if (this.refs.bar) {
             this._addBarListener();
         }
-        if (this.refs.rail) {
+        if (this.refs.barWrap) {
             this._addRailListener();
         }
     }
@@ -935,7 +772,7 @@ Bar.defaultProps = {
     barBorderRadius: 'auto',
     barMinSize: 0,
     railBg: '#01a99a',
-    railOp: 0,
+    railOpacity: 0,
     railCls: '',
     railSize: '6px',
     railBorder: null,
@@ -1078,14 +915,14 @@ function createScrollbarButton(context, type) {
 function createBar(barProps, vBarState, hBarState, opacity) {
     const isVBarHide = !vBarState.size;
     const isHBarHide = !hBarState.size;
-    const vBar = vBarState.size && !barProps.keepRailShow ? React.createElement(Bar, Object.assign({}, Object.assign({}, barProps, {
+    const vBar = vBarState.size || barProps.keepRailShow ? React.createElement(Bar, Object.assign({}, Object.assign({}, barProps, {
         barsState: vBarState,
         horizontal: false,
         hideBar: isVBarHide,
         otherBarHide: isHBarHide,
         opacity
     }), { key: "vBar" })) : null;
-    const hBar = vBarState.size && !barProps.keepRailShow ? React.createElement(Bar, Object.assign({}, Object.assign({}, barProps, {
+    const hBar = vBarState.size || barProps.keepRailShow ? React.createElement(Bar, Object.assign({}, Object.assign({}, barProps, {
         barsState: hBarState,
         horizontal: true,
         hideBar: isHBarHide,
@@ -1129,9 +966,6 @@ class BaseScroll extends React.PureComponent {
         } else {
             return React.createElement("div", Object.assign({ ref: "container" }, eventObj, { className: className }, others, { style: style }), ch);
         }
-    }
-    componentDidMount() {
-        console.log('mounted...');
     }
 }
 BaseScroll.displayName = 'BasePScroll';
@@ -1281,14 +1115,14 @@ function enhance(WrapperComponent) {
         }
         render() {
             const _a = this.props,
-                  { wrappedCompRef, children, style, className, renderContainer, barBorderRadius, barSize, railBg, railCls, barBg, barCls, barOpacity, barMinSize, railOp, railSize, railBorderRadius, railBorder, keepRailShow, scrollButtonBg, scrollButtonClickStep, scrollButtonEnable, scrollButtonPressingStep } = _a,
-                  otherProps = __rest(_a, ["wrappedCompRef", "children", "style", "className", "renderContainer", "barBorderRadius", "barSize", "railBg", "railCls", "barBg", "barCls", "barOpacity", "barMinSize", "railOp", "railSize", "railBorderRadius", "railBorder", "keepRailShow", "scrollButtonBg", "scrollButtonClickStep", "scrollButtonEnable", "scrollButtonPressingStep"]);
+                  { wrappedCompRef, children, style, className, renderContainer, barBorderRadius, barSize, railBg, railCls, barBg, barCls, barOpacity, barMinSize, railOpacity, railSize, railBorderRadius, railBorder, keepRailShow, scrollButtonBg, scrollButtonClickStep, scrollButtonEnable, scrollButtonPressingStep } = _a,
+                  otherProps = __rest(_a, ["wrappedCompRef", "children", "style", "className", "renderContainer", "barBorderRadius", "barSize", "railBg", "railCls", "barBg", "barCls", "barOpacity", "barMinSize", "railOpacity", "railSize", "railBorderRadius", "railBorder", "keepRailShow", "scrollButtonBg", "scrollButtonClickStep", "scrollButtonEnable", "scrollButtonPressingStep"]);
             const { barState } = this.state;
             const barProps = {
                 railBg,
                 railCls,
                 keepRailShow,
-                railOp,
+                railOpacity,
                 railSize,
                 railBorder,
                 railBorderRadius,
@@ -1388,11 +1222,8 @@ function enhance(WrapperComponent) {
          */
         _setContainerSizeStrategy(strat) {
             const container = this._getDomByRef('container');
-            if (this._destroyContainerResize) {
-                this._destroyContainerResize();
-                this._destroyContainerResize = null;
-            }
             if (strat == 'percent') {
+                /* istanbul ignore if */
                 if (this._destroyContainerResize) {
                     this._destroyContainerResize();
                     this._destroyContainerResize = null;
@@ -1449,7 +1280,7 @@ function enhance(WrapperComponent) {
         _onScrollButtonClick(move, type, animate = true) {
             this.wrappedComp.scrollBy({
                 [type]: move
-            }, false /* whether to animate */);
+            }, 0);
         }
         _scrollComptelte(...args) {
             if (this.props.handleScrollComplete) {
@@ -1493,6 +1324,78 @@ function enhance(WrapperComponent) {
     });
 }
 
+function noop$2() {
+    return true;
+}
+/* istanbul ignore next */
+const now = Date.now || (() => {
+    return new Date().getTime();
+});
+class Scroll {
+    constructor() {
+        this.init();
+        this.isRunning = false;
+    }
+    startScroll(st, ed, spd, stepCb = noop$2, completeCb = noop$2, vertifyCb = noop$2, easingMethod = noop$2) {
+        const df = ed - st;
+        const dir = df > 0 ? -1 : 1;
+        const nt = now();
+        if (!this.isRunning) {
+            this.init();
+        }
+        if (dir != this.dir || nt - this.ts > 200) {
+            this.ts = nt;
+            this.dir = dir;
+            this.st = st;
+            this.ed = ed;
+            this.df = df;
+        } /* istanbul ignore next */
+        else {
+                this.df += df;
+            }
+        this.spd = spd;
+        this.completeCb = completeCb;
+        this.vertifyCb = vertifyCb;
+        this.stepCb = stepCb;
+        this.easingMethod = easingMethod;
+        this.ref = requestAnimationFrame(window);
+        if (!this.isRunning) {
+            this.execScroll();
+        }
+    }
+    execScroll() {
+        let percent = 0;
+        this.isRunning = true;
+        const loop = () => {
+            /* istanbul ignore if */
+            if (!this.isRunning || !this.vertifyCb(percent)) {
+                this.isRunning = false;
+                return;
+            }
+            percent = (now() - this.ts) / this.spd;
+            if (percent < 1) {
+                const value = this.st + this.df * this.easingMethod(percent);
+                this.stepCb(value);
+                this.ref(loop);
+            } else {
+                // trigger complete
+                this.stepCb(this.st + this.df);
+                this.completeCb();
+                this.isRunning = false;
+            }
+        };
+        this.ref(loop);
+    }
+    init() {
+        this.st = 0;
+        this.ed = 0;
+        this.df = 0;
+        this.spd = 0;
+        this.ts = 0;
+        this.dir = 0;
+    }
+}
+
 class MagicScrollNative extends React.PureComponent {
     /* --------------------- Lifecycle Methods ------------------------ */
     constructor(props) {
@@ -1520,16 +1423,18 @@ class MagicScrollNative extends React.PureComponent {
         };
         // Bind `this` context
         this._handleResize = this._handleResize.bind(this);
-        // api binds
         this.scrollTo = this.scrollTo.bind(this);
         this._handleScroll = this._handleScroll.bind(this);
+        this._handleWheel = this._handleWheel.bind(this);
         this.subscription = new Subscription();
+        this.scrollX = new Scroll();
+        this.scrollY = new Scroll();
     }
     render() {
         const { children, renderPanel, renderView, scrollingX, scrollingY } = this.props;
         const { verticalNativeBarPos } = this.props;
         const barState = this.state.barState;
-        return React.createElement(View, { resize: listenResize, barPos: verticalNativeBarPos, handleResize: this._handleResize, barsState: barState, handleScroll: this._handleScroll, renderPanel: renderPanel, renderView: renderView, ref: this.panel, scrollingX: scrollingX, scrollingY: scrollingY }, children);
+        return React.createElement(View, { resize: listenResize, barPos: verticalNativeBarPos, barsState: barState, renderPanel: renderPanel, renderView: renderView, ref: this.panel, scrollingX: scrollingX, scrollingY: scrollingY, handleResize: this._handleResize, handleScroll: this._handleScroll, handleWheel: this._handleWheel }, children);
     }
     componentDidMount() {
         this._refresh();
@@ -1568,28 +1473,36 @@ class MagicScrollNative extends React.PureComponent {
         });
         return barState;
     }
-    _scrollTo(x, y, animate = true) {
+    _scrollTo(x, y, speed, easing) {
         const panelElm = this._getDomByRef('panel');
+        const { scrollLeft, scrollTop, scrollHeight, scrollWidth, clientWidth, clientHeight } = panelElm;
         // Normalize...
         if (typeof x === 'undefined') {
             x = panelElm.scrollLeft;
         } else {
-            x = normalizeSize(x, panelElm.scrollWidth - panelElm.clientWidth);
+            x = normalizeSize(x, scrollWidth - clientWidth);
         }
         if (typeof y === 'undefined') {
             y = panelElm.scrollTop;
         } else {
-            y = normalizeSize(y, panelElm.scrollHeight - panelElm.clientHeight);
+            y = normalizeSize(y, scrollHeight - clientHeight);
         }
-        if (animate) {
-            // hadnle for scroll complete
-            const scrollingComplete = this._scrollComptelte.bind(this);
-            // options
-            const { easing, speed } = this.props;
-            smoothScroll(panelElm, x - panelElm.scrollLeft, y - panelElm.scrollTop, speed, easing, scrollingComplete);
-        } else {
-            panelElm.scrollTop = y;
-            panelElm.scrollLeft = x;
+        // hadnle for scroll complete
+        const scrollingComplete = this._scrollComptelte.bind(this);
+        // options
+        const { easing: optionEasing, speed: optionSpeed } = this.props;
+        const easingMethod = createEasingFunction(easing || optionEasing, easingPattern);
+        if (x - scrollLeft) {
+            // move x
+            this.scrollX.startScroll(scrollLeft, x, speed || optionSpeed, dx => {
+                panelElm.scrollLeft = dx;
+            }, scrollingComplete, undefined, easingMethod);
+        }
+        if (y - scrollTop) {
+            // move Y
+            this.scrollY.startScroll(scrollTop, y, speed, dy => {
+                panelElm.scrollTop = dy;
+            }, scrollingComplete, undefined, easingMethod);
         }
     }
     _refresh() {
@@ -1603,15 +1516,23 @@ class MagicScrollNative extends React.PureComponent {
     _handleResize() {
         this.refresh();
     }
+    _handleWheel(dir, val) {
+        const speed = this.props.wheelScrollDuration;
+        this.scrollBy({
+            [dir]: val
+        }, speed);
+    }
     _scrollComptelte() {
-        console.log('scroll complelte...');
+        if (this.props.onScrollComplete) {
+            this.props.onScrollComplete();
+        }
     }
     _onBarDrag(direction, percent) {
         const elm = this._getDomByRef('panel');
         const dest = elm[direction == 'x' ? 'scrollWidth' : 'scrollHeight'] * percent;
         this.scrollTo({
             [direction]: dest
-        }, false);
+        }, 0);
     }
     _getPosition() {
         const { scrollTop, scrollLeft } = this._getDomByRef('panel');
@@ -1621,10 +1542,10 @@ class MagicScrollNative extends React.PureComponent {
         };
     }
     /** Public methods */
-    scrollTo({ x, y }, animate = true) {
-        this._scrollTo(x, y, animate);
+    scrollTo({ x, y }, speed, easing) {
+        this._scrollTo(x, y, speed, easing);
     }
-    scrollBy({ x, y }, animate = true) {
+    scrollBy({ x, y }, speed, easing) {
         const { scrollWidth, scrollHeight, clientWidth, clientHeight } = this._getDomByRef('panel');
         let { scrollLeft, scrollTop } = this._getPosition();
         if (x) {
@@ -1633,7 +1554,7 @@ class MagicScrollNative extends React.PureComponent {
         if (y) {
             scrollTop += normalizeSize(y, scrollHeight - clientHeight);
         }
-        this._scrollTo(scrollLeft, scrollTop, animate);
+        this._scrollTo(scrollLeft, scrollTop, speed, easing);
     }
     refresh() {
         this._refresh();
@@ -1646,6 +1567,7 @@ MagicScrollNative.defaultProps = {
     scrollingY: true,
     speed: 300,
     easing: undefined,
+    wheelScrollDuration: 0,
     verticalNativeBarPos: 'right'
 };
 MagicScrollNative.displayName = 'magic-scroll-native';

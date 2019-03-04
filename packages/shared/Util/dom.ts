@@ -4,6 +4,7 @@ import * as ReactDom from 'react-dom';
  */
 export const getDom = (ref: React.ReactInstance): Element | null => {
   if (!ref) {
+    /* istanbul ignore next */
     return null;
   }
 
@@ -42,28 +43,9 @@ export function normalizeSize(size: number | string, amount: number) {
   let number: any = /(-?\d+(?:\.\d+?)?)%$/.exec(size + '');
   if (!number) {
     number = (size as number) - 0;
-  } else {
+  } /* istanbul ignore next */ else {
     number = number[1] - 0;
     number = ((amount as number) * number) / 100;
   }
   return number;
-}
-
-export function _normalizecoordinate(x, y, elm) {
-  // Normalize...
-  if (typeof x === 'undefined') {
-    x = elm.scrollLeft;
-  } else {
-    x = normalizeSize(x, elm.scrollWidth - elm.clientWidth);
-  }
-  if (typeof y === 'undefined') {
-    y = elm.scrollTop;
-  } else {
-    y = normalizeSize(y, elm.scrollHeight - elm.clientHeight);
-  }
-
-  return {
-    x,
-    y
-  };
 }

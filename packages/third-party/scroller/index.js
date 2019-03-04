@@ -3,7 +3,7 @@
  * http://github.com/zynga/scroller
  *
  * modified by wangyi7099
- * 
+ *
  * Copyright 2011, Zynga Inc.
  * Licensed under the MIT License.
  * https://raw.github.com/zynga/scroller/master/MIT-LICENSE.txt
@@ -15,7 +15,7 @@
  */
 import { easingPattern, createEasingFunction } from '../easingPattern';
 import { core } from './animate';
-import { NOOP } from '../../shared/constants';
+import { NOOP } from 'shared/constants';
 
 var animatingMethod = null;
 
@@ -38,7 +38,12 @@ export default function Scroller(callback, options) {
     animationDuration: 250,
 
     /** Enable bouncing (content can be slowly moved outside and jumps back after releasing) */
-    bouncing: true,
+    bouncing: {
+      top: 100,
+      bottom: 100,
+      left: 100,
+      right: 100
+    },
 
     /** Enable locking to the main axis if user moves only slightly on one of them at start */
     locking: true,
@@ -289,7 +294,8 @@ var members = {
     clientHeight,
     contentWidth,
     contentHeight,
-    animate = trye
+    animate,
+    noScroll = false
   ) {
     var self = this;
 
@@ -313,8 +319,10 @@ var members = {
     // Refresh maximums
     self.__computeScrollMax();
 
-    // Refresh scroll position
-    self.scrollTo(self.__scrollLeft, self.__scrollTop, animate);
+    if (!noScroll) {
+      // Refresh scroll position
+      self.scrollTo(self.__scrollLeft, self.__scrollTop, animate);
+    }
   },
 
   /**
@@ -359,7 +367,8 @@ var members = {
       activateCallback,
       deactivateCallback,
       startCallback,
-      beforeDeactivateCallback
+      beforeDeactivateCallback,
+      beforeDeactiveEnd
     }
   ) {
     var self = this;
@@ -367,6 +376,7 @@ var members = {
     self.__refreshHeight = height;
     self.__refreshActivate = activateCallback;
     self.__refreshBeforeDeactivate = beforeDeactivateCallback;
+    self.__refreshBeforeDeactiveEnd = beforeDeactiveEnd;
     self.__refreshDeactivate = deactivateCallback;
     self.__refreshStart = startCallback;
   },
@@ -376,7 +386,8 @@ var members = {
       activateCallback,
       deactivateCallback,
       startCallback,
-      beforeDeactivateCallback
+      beforeDeactivateCallback,
+      beforeDeactiveEnd
     }
   ) {
     var self = this;
@@ -384,6 +395,7 @@ var members = {
     self.__loadHeight = height;
     self.__loadActivate = activateCallback;
     self.__loadBeforeDeactivate = beforeDeactivateCallback;
+    self.__loadBeforeDeactiveEnd = beforeDeactiveEnd;
     self.__loadDeactivate = deactivateCallback;
     self.__loadStart = startCallback;
   },
@@ -392,9 +404,16 @@ var members = {
    * Starts pull-to-refresh manually.
    */
   triggerRefreshOrLoad: function(type = 'refresh') {
+    var wasDecelerating = this.__isDecelerating;
+    if (wasDecelerating) {
+      core.effect.Animate.stop(wasDecelerating);
+      this.__isDecelerating = false;
+    }
     // Use publish instead of scrollTo to allow scrolling to out of boundary position
     // We don't need to normalize scrollLeft, zoomLevel, etc. here because we only y-scrolling when pull-to-refresh is enabled
     if (type == 'refresh') {
+      if (this.__refreshActive || this.__refreshBeforeDeactiveStarted) return;
+
       this.__publish(
         this.__scrollLeft,
         -this.__refreshHeight,
@@ -403,8 +422,11 @@ var members = {
       );
       if (this.__refreshStart) {
         this.__refreshStart();
+        this.__refreshActive = true;
       }
-    } else {
+    } else if (type == 'load') {
+      if (this.__loadActive || this.__loadBeforeDeactiveStarted) return;
+
       this.__publish(
         this.__scrollLeft,
         this.__maxScrollTop + this.__loadHeight,
@@ -413,6 +435,7 @@ var members = {
       );
       if (this.__loadStart) {
         this.__loadStart();
+        this.__loadActive = true;
       }
     }
   },
@@ -423,32 +446,38 @@ var members = {
   finishRefreshOrLoad: function() {
     var self = this;
 
-    if (self.__refreshBeforeDeactivate && self.__refreshActive) {
+    if (self.__refreshActive) {
       self.__refreshActive = false;
-      self.__refreshBeforeDeactivate(function() {
-        if (self.__refreshDeactivate) {
-          self.__refreshDeactivate();
+      let endRefreshActive = function() {
+        if (self.__refreshBeforeDeactiveEnd) {
+          self.__refreshBeforeDeactiveEnd();
         }
+        self.__refreshBeforeDeactiveStarted = true;
         self.scrollTo(self.__scrollLeft, self.__scrollTop, true);
-      });
-    } else if (self.__refreshDeactivate && self.__refreshActive) {
-      self.__refreshActive = false;
-      self.__refreshDeactivate();
-      self.scrollTo(self.__scrollLeft, self.__scrollTop, true);
+      };
+
+      if (self.__refreshBeforeDeactivate) {
+        self.__refreshBeforeDeactivate(endRefreshActive);
+      } else {
+        endRefreshActive();
+      }
     }
 
-    if (self.__loadBeforeDeactivate && self.__loadActive) {
+    if (self.__loadActive) {
       self.__loadActive = false;
-      self.__loadBeforeDeactivate(function() {
-        if (self.__loadDeactivate) {
-          self.__loadDeactivate();
+      let endLoadActive = function() {
+        if (self.__loadBeforeDeactiveEnd) {
+          self.__loadBeforeDeactiveEnd();
         }
+        self.__loadBeforeDeactiveStarted = true;
         self.scrollTo(self.__scrollLeft, self.__scrollTop, true);
-      });
-    } else if (self.__loadDeactivate && self.__loadActive) {
-      self.__loadActive = false;
-      self.__loadDeactivate();
-      self.scrollTo(self.__scrollLeft, self.__scrollTop, true);
+      };
+
+      if (self.__loadBeforeDeactivate) {
+        self.__loadBeforeDeactivate(endLoadActive);
+      } else {
+        endLoadActive();
+      }
     }
   },
 
@@ -530,8 +559,9 @@ var members = {
     self.__computeScrollMax(level);
 
     // Recompute left and top coordinates based on new zoom level
-    var left = (originLeft + self.__scrollLeft) * level / oldLevel - originLeft;
-    var top = (originTop + self.__scrollTop) * level / oldLevel - originTop;
+    var left =
+      ((originLeft + self.__scrollLeft) * level) / oldLevel - originLeft;
+    var top = ((originTop + self.__scrollTop) * level) / oldLevel - originTop;
 
     // Limit x-axis
     if (left > self.__maxScrollLeft) {
@@ -580,7 +610,7 @@ var members = {
    * @param animate {Boolean?false} Whether the scrolling should happen using an animation
    * @param zoom {Number?null} Zoom level to go to
    */
-  scrollTo: function(left, top, animate, zoom, force) {
+  scrollTo: function(left, top, animate, zoom, force, speed, easing) {
     var self = this;
 
     // Stop deceleration
@@ -625,9 +655,12 @@ var members = {
       }
     }
 
-    // Limit for allowed ranges
-    left = Math.max(Math.min(self.__maxScrollLeft, left), 0);
-    top = Math.max(Math.min(self.__maxScrollTop, top), 0);
+    if (!force) {
+      // Limit for allowed ranges
+      left = Math.max(Math.min(self.__maxScrollLeft, left), 0);
+      top = Math.max(Math.min(self.__maxScrollTop, top), 0);
+    }
+
     // Don't animate when no change detected, still call publish to make sure
     // that rendered position is really in-sync with internal data
     if (left === self.__scrollLeft && top === self.__scrollTop) {
@@ -636,7 +669,7 @@ var members = {
 
     // Publish new values
     if (!self.__isTracking) {
-      self.__publish(left, top, zoom, animate);
+      self.__publish(left, top, zoom, animate, speed, easing);
     }
   },
 
@@ -835,7 +868,7 @@ var members = {
         var oldLevel = level;
 
         // Recompute level based on previous scale and new scale
-        level = level / self.__lastScale * scale;
+        level = (level / self.__lastScale) * scale;
 
         // Limit level according to configuration
         level = Math.max(
@@ -851,10 +884,10 @@ var members = {
 
           // Recompute left and top coordinates based on new zoom level
           scrollLeft =
-            (currentTouchLeftRel + scrollLeft) * level / oldLevel -
+            ((currentTouchLeftRel + scrollLeft) * level) / oldLevel -
             currentTouchLeftRel;
           scrollTop =
-            (currentTouchTopRel + scrollTop) * level / oldLevel -
+            ((currentTouchTopRel + scrollTop) * level) / oldLevel -
             currentTouchTopRel;
 
           // Recompute max scroll values
@@ -862,19 +895,20 @@ var members = {
         }
       }
 
+      var bouncing = self.options.bouncing;
+
       if (self.__enableScrollX) {
         scrollLeft -= moveX * this.options.speedMultiplier;
         var maxScrollLeft = self.__maxScrollLeft;
 
         if (scrollLeft > maxScrollLeft || scrollLeft < 0) {
-          // Slow down on the edges
-          if (self.options.bouncing) {
-            scrollLeft += moveX / 2 * this.options.speedMultiplier;
-          } else if (scrollLeft > maxScrollLeft) {
-            scrollLeft = maxScrollLeft;
-          } else {
-            scrollLeft = 0;
-          }
+          scrollLeft += (moveX / 2) * this.options.speedMultiplier;
+
+          // fix scrollLeft
+          scrollLeft = Math.min(
+            Math.max(-bouncing.left, scrollLeft),
+            maxScrollLeft + bouncing.right
+          );
         }
       }
 
@@ -884,52 +918,52 @@ var members = {
         var maxScrollTop = self.__maxScrollTop;
 
         if (scrollTop > maxScrollTop || scrollTop < 0) {
-          // Slow down on the edges
-          if (self.options.bouncing) {
-            scrollTop += moveY / 2 * this.options.speedMultiplier;
+          scrollTop += (moveY / 2) * this.options.speedMultiplier;
 
-            // Support pull-to-refresh (only when only y is scrollable)
-            if (
-              !self.__enableScrollX &&
-              (self.__refreshHeight != null || self.__loadHeight != null)
-            ) {
-              if (!self.__refreshActive && scrollTop <= -self.__refreshHeight) {
-                self.__refreshActive = true;
-                if (self.__refreshActivate) {
-                  self.__refreshActivate();
-                }
-              } else if (
-                self.__refreshActive &&
-                scrollTop > -self.__refreshHeight
-              ) {
-                self.__refreshActive = false;
-                if (self.__refreshDeactivate) {
-                  self.__refreshDeactivate();
-                }
+          // fix scrollTop
+          scrollTop = Math.min(
+            Math.max(-bouncing.top, scrollTop),
+            maxScrollTop + bouncing.bottom
+          );
+
+          // Trigger pull to refresh or push to load
+          if (
+            !self.__enableScrollX &&
+            (self.__refreshHeight != null || self.__loadHeight != null)
+          ) {
+            if (!self.__refreshActive && scrollTop <= -self.__refreshHeight) {
+              self.__refreshActive = true;
+              if (self.__refreshActivate) {
+                self.__refreshActivate();
               }
-              // handle for push-load
-              else if (
-                !self.__loadActive &&
-                scrollTop >= self.__maxScrollTop + self.__loadHeight
-              ) {
-                self.__loadActive = true;
-                if (self.__loadActivate) {
-                  self.__loadActivate();
-                }
-              } else if (
-                self.__refreshActive &&
-                scrollTop < self.__maxScrollTop + self.__loadHeight
-              ) {
-                self.__loadActive = false;
-                if (self.__loadDeactivate) {
-                  self.__loadDeactivate();
-                }
+            } else if (
+              self.__refreshActive &&
+              scrollTop > -self.__refreshHeight
+            ) {
+              self.__refreshActive = false;
+              if (self.__refreshDeactivate) {
+                self.__refreshDeactivate();
               }
             }
-          } else if (scrollTop > maxScrollTop) {
-            scrollTop = maxScrollTop;
-          } else {
-            scrollTop = 0;
+            // handle for push-load
+            else if (
+              !self.__loadActive &&
+              scrollTop >= self.__maxScrollTop + self.__loadHeight &&
+              self.__loadHeight > 0
+            ) {
+              self.__loadActive = true;
+              if (self.__loadActivate) {
+                self.__loadActivate();
+              }
+            } else if (
+              self.__loadActive &&
+              scrollTop < self.__maxScrollTop + self.__loadHeight
+            ) {
+              self.__loadActive = false;
+              if (self.__loadDeactivate) {
+                self.__loadDeactivate();
+              }
+            }
           }
         }
       }
@@ -1034,8 +1068,8 @@ var members = {
           var movedTop = self.__scrollTop - positions[startPos - 1];
 
           // Based on 50ms compute the movement to apply for each render step
-          self.__decelerationVelocityX = movedLeft / timeOffset * (1000 / 60);
-          self.__decelerationVelocityY = movedTop / timeOffset * (1000 / 60);
+          self.__decelerationVelocityX = (movedLeft / timeOffset) * (1000 / 60);
+          self.__decelerationVelocityY = (movedTop / timeOffset) * (1000 / 60);
 
           // How much velocity is required to start the deceleration
           var minVelocityToStartDeceleration =
@@ -1134,6 +1168,8 @@ var members = {
     self.__disable = true;
   },
   start: function() {
+    var self = this;
+
     self.__disable = true;
   },
   /*
@@ -1149,7 +1185,7 @@ var members = {
    * @param top {Number} Top scroll position
    * @param animate {Boolean?false} Whether animation should be used to move to the new coordinates
    */
-  __publish: function(left, top, zoom, animate) {
+  __publish: function(left, top, zoom, animate, speed, easing) {
     var self = this;
     if (self.__disable) {
       return;
@@ -1167,7 +1203,7 @@ var members = {
       self.__isAnimating = false;
     }
 
-    if (animate && self.options.animating) {
+    if (animate && (self.options.animating || speed)) {
       // Keep scheduled positions for scrollBy/zoomBy functionality
       self.__scheduledLeft = left;
       self.__scheduledTop = top;
@@ -1222,15 +1258,30 @@ var members = {
             self.__zoomComplete = null;
           }
         }
+
+        if (self.__refreshBeforeDeactiveStarted) {
+          self.__refreshBeforeDeactiveStarted = false;
+          if (self.__refreshDeactivate) self.__refreshDeactivate();
+        }
+
+        if (self.__loadBeforeDeactiveStarted) {
+          self.__loadBeforeDeactiveStarted = false;
+          if (self.__loadDeactivate) self.__loadDeactivate();
+        }
       };
+
+      let easingFunction = animatingMethod;
+      if (easing) {
+        easingFunction = createEasingFunction(easing, easingPattern);
+      }
 
       // When continuing based on previous animation we choose an ease-out animation instead of ease-in-out
       self.__isAnimating = core.effect.Animate.start(
         step,
         verify,
         completed,
-        self.options.animationDuration,
-        wasAnimating ? animatingMethod : noAnimatingMethod
+        speed || self.options.animationDuration,
+        wasAnimating ? easingFunction : noAnimatingMethod
       );
     } else {
       self.__scheduledLeft = self.__scrollLeft = left;
@@ -1250,6 +1301,16 @@ var members = {
           self.__zoomComplete();
           self.__zoomComplete = null;
         }
+      }
+
+      if (self.__refreshBeforeDeactiveStarted) {
+        self.__refreshBeforeDeactiveStarted = false;
+        if (self.__refreshDeactivate) self.__refreshDeactivate();
+      }
+
+      if (self.__loadBeforeDeactiveStarted) {
+        self.__loadBeforeDeactiveStarted = false;
+        if (self.__loadDeactivate) self.__loadDeactivate();
       }
     }
   },
@@ -1354,6 +1415,9 @@ var members = {
     };
 
     var completed = function() {
+      if (!self.__isDecelerating) {
+        return;
+      }
       self.__isDecelerating = false;
       if (self.__didDecelerationComplete) {
         self.__scrollComplete();
@@ -1374,45 +1438,34 @@ var members = {
    */
   __stepThroughDeceleration: function(render) {
     var self = this;
-
-    //
-    // COMPUTE NEXT SCROLL POSITION
-    //
-
+    var bouncing = self.options.bouncing;
+    var minLeft = self.__minDecelerationScrollLeft;
+    var maxLeft = self.__maxDecelerationScrollLeft;
+    var minTop = self.__minDecelerationScrollTop;
+    var maxTop = self.__maxDecelerationScrollTop;
     // Add deceleration to scroll position
     var scrollLeft = self.__scrollLeft + self.__decelerationVelocityX;
     var scrollTop = self.__scrollTop + self.__decelerationVelocityY;
 
-    //
-    // HARD LIMIT SCROLL POSITION FOR NON BOUNCING MODE
-    //
+    var bounceX = scrollLeft < minLeft || scrollLeft > maxLeft;
+    var bounceY = scrollTop < minTop || scrollTop > maxTop;
 
-    if (!self.options.bouncing) {
-      var scrollLeftFixed = Math.max(
-        Math.min(self.__maxDecelerationScrollLeft, scrollLeft),
-        self.__minDecelerationScrollLeft
-      );
-      if (scrollLeftFixed !== scrollLeft) {
-        scrollLeft = scrollLeftFixed;
-        self.__decelerationVelocityX = 0;
-      }
+    // fix scrollLeft and scrollTop
+    var fixedScrollLeft = Math.min(
+      Math.max(minLeft - bouncing.left, scrollLeft),
+      maxLeft + bouncing.right
+    );
 
-      var scrollTopFixed = Math.max(
-        Math.min(self.__maxDecelerationScrollTop, scrollTop),
-        self.__minDecelerationScrollTop
-      );
-      if (scrollTopFixed !== scrollTop) {
-        scrollTop = scrollTopFixed;
-        self.__decelerationVelocityY = 0;
-      }
-    }
+    var fixedScrollTop = Math.min(
+      Math.max(minTop - bouncing.top, scrollTop),
+      maxTop + bouncing.bottom
+    );
 
     //
     // UPDATE SCROLL POSITION
     //
-
     if (render) {
-      self.__publish(scrollLeft, scrollTop, self.__zoomLevel);
+      self.__publish(fixedScrollLeft, fixedScrollTop, self.__zoomLevel);
     } else {
       self.__scrollLeft = scrollLeft;
       self.__scrollTop = scrollTop;
@@ -1437,46 +1490,73 @@ var members = {
     // BOUNCING SUPPORT
     //
 
-    if (self.options.bouncing) {
-      var scrollOutsideX = 0;
-      var scrollOutsideY = 0;
+    var scrollOutsideX = 0;
+    var scrollOutsideY = 0;
 
-      // This configures the amount of change applied to deceleration/acceleration when reaching boundaries
-      var penetrationDeceleration = self.options.penetrationDeceleration;
-      var penetrationAcceleration = self.options.penetrationAcceleration;
+    // This configures the amount of change applied to deceleration/acceleration when reaching boundaries
+    var penetrationDeceleration = self.options.penetrationDeceleration;
+    var penetrationAcceleration = self.options.penetrationAcceleration;
 
+    if (bounceX) {
       // Check limits
       if (scrollLeft < self.__minDecelerationScrollLeft) {
         scrollOutsideX = self.__minDecelerationScrollLeft - scrollLeft;
       } else if (scrollLeft > self.__maxDecelerationScrollLeft) {
         scrollOutsideX = self.__maxDecelerationScrollLeft - scrollLeft;
       }
+    }
 
+    if (bounceY) {
       if (scrollTop < self.__minDecelerationScrollTop) {
         scrollOutsideY = self.__minDecelerationScrollTop - scrollTop;
       } else if (scrollTop > self.__maxDecelerationScrollTop) {
         scrollOutsideY = self.__maxDecelerationScrollTop - scrollTop;
       }
+    }
 
-      // Slow down until slow enough, then flip back to snap position
-      if (scrollOutsideX !== 0) {
-        if (scrollOutsideX * self.__decelerationVelocityX <= 0) {
-          self.__decelerationVelocityX +=
-            scrollOutsideX * penetrationDeceleration;
-        } else {
-          self.__decelerationVelocityX =
-            scrollOutsideX * penetrationAcceleration;
+    if (scrollOutsideX !== 0) {
+      if (scrollOutsideX * self.__decelerationVelocityX <= 0) {
+        self.__decelerationVelocityX +=
+          scrollOutsideX * penetrationDeceleration;
+        if (
+          scrollOutsideX < 0 &&
+          -scrollOutsideX >= bouncing.right &&
+          self.__decelerationVelocityX > 0
+        ) {
+          self.__decelerationVelocityX = -bouncing.right;
         }
+        if (
+          scrollOutsideX > 0 &&
+          scrollOutsideX >= bouncing.left &&
+          self.__decelerationVelocityX < 0
+        ) {
+          self.__decelerationVelocityX = bouncing.left;
+        }
+      } else {
+        self.__decelerationVelocityX = scrollOutsideX * penetrationAcceleration;
       }
+    }
 
-      if (scrollOutsideY !== 0) {
-        if (scrollOutsideY * self.__decelerationVelocityY <= 0) {
-          self.__decelerationVelocityY +=
-            scrollOutsideY * penetrationDeceleration;
-        } else {
-          self.__decelerationVelocityY =
-            scrollOutsideY * penetrationAcceleration;
+    if (scrollOutsideY !== 0) {
+      if (scrollOutsideY * self.__decelerationVelocityY <= 0) {
+        self.__decelerationVelocityY +=
+          scrollOutsideY * penetrationDeceleration;
+        if (
+          scrollOutsideY < 0 &&
+          -scrollOutsideY >= bouncing.bottom &&
+          self.__decelerationVelocityY > 0
+        ) {
+          self.__decelerationVelocityY = -bouncing.bottom;
         }
+        if (
+          scrollOutsideY > 0 &&
+          scrollOutsideY >= bouncing.top &&
+          self.__decelerationVelocityY < 0
+        ) {
+          self.__decelerationVelocityY = bouncing.top;
+        }
+      } else {
+        self.__decelerationVelocityY = scrollOutsideY * penetrationAcceleration;
       }
     }
   }

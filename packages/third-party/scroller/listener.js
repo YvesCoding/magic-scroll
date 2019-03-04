@@ -3,16 +3,18 @@ export function listenContainer(
   scroller,
   eventCallback,
   zooming,
-  preventDefault
+  preventDefault,
+  preventDefaultOnMove
 ) {
   let destroy = null;
   // for touch
   function touchstart(e) {
     // Don't react if initial down happens on a form element
     if (
-      e.touches[0] &&
-      e.touches[0].target &&
-      e.touches[0].target.tagName.match(/input|textarea|select/i)
+      (e.touches[0] &&
+        e.touches[0].target &&
+        e.touches[0].target.tagName.match(/input|textarea|select/i)) ||
+      scroller.__disable
     ) {
       return;
     }
@@ -21,15 +23,21 @@ export function listenContainer(
     if (preventDefault) {
       e.preventDefault();
     }
+
+    e.stopPropagation();
     // here , we want to manully prevent default, so we
     // set passive to false
     // see https://developer.mozilla.org/zh-CN/docs/Web/API/EventTarget/addEventListener
     document.addEventListener('touchmove', touchmove, { passive: false });
   }
   function touchmove(e) {
+    if (scroller.__disable) return;
+
     eventCallback('mousemove');
     scroller.doTouchMove(e.touches, e.timeStamp, e.scale);
-    e.preventDefault();
+    if (preventDefaultOnMove) {
+      e.preventDefault();
+    }
   }
   function touchend(e) {
     eventCallback('mouseup');
@@ -42,9 +50,15 @@ export function listenContainer(
 
   // for mouse
   function mousedownEvent(e) {
-    if (e.target.tagName.match(/input|textarea|select/i)) {
+    if (
+      e.target.tagName.match(/input|textarea|select/i) ||
+      scroller.__disable
+    ) {
       return;
     }
+
+    e.stopPropagation();
+
     eventCallback('mousedown');
     scroller.doTouchStart(
       [
@@ -63,7 +77,7 @@ export function listenContainer(
     mousedown = true;
   }
   function mousemove(e) {
-    if (!mousedown) {
+    if (!mousedown || scroller.__disable) {
       return;
     }
     eventCallback('mousemove');
@@ -76,7 +90,9 @@ export function listenContainer(
       ],
       e.timeStamp
     );
-
+    if (preventDefaultOnMove) {
+      e.preventDefault();
+    }
     mousedown = true;
   }
   function mouseup(e) {

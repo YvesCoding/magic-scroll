@@ -1,11 +1,17 @@
 import * as React from 'react';
 import detectResize from 'third-party/resize-detector';
+import {
+  createEasingFunction,
+  easingPattern
+} from 'third-party/easingPattern/index';
+
 import { normalizeSize, getDom } from 'shared/util/dom';
 import { Subscription } from 'shared/util/subscription';
 
 import Panel from './panel';
-import { smoothScroll } from 'third-party/easingPattern/smoothScroll';
 import { enhance } from 'magic-scroll-base';
+
+import Scroll from './smoothScroll';
 
 interface Dest {
   x?: string | number;
@@ -48,6 +54,11 @@ interface Props {
    */
   verticalNativeBarPos?: 'right' | 'left';
 
+  /**
+   * The scrolling speed while using mouse wheel.
+   */
+  wheelScrollDuration: number;
+
   /** ---------- Customizable render function ----------------- */
 
   renderPanel?(props?: any): React.ReactElement<any>;
@@ -86,7 +97,7 @@ class MagicScrollNative extends React.PureComponent<
     scrollingY: true,
     speed: 300,
     easing: undefined,
-
+    wheelScrollDuration: 0,
     verticalNativeBarPos: 'right'
   };
   static displayName = 'magic-scroll-native';
@@ -98,6 +109,9 @@ class MagicScrollNative extends React.PureComponent<
 
   /** Subscription */
   subscription: Subscription;
+
+  scrollX: Scroll;
+  scrollY: Scroll;
 
   /* --------------------- Lifecycle Methods ------------------------ */
   constructor(props) {
@@ -127,11 +141,13 @@ class MagicScrollNative extends React.PureComponent<
 
     // Bind `this` context
     this._handleResize = this._handleResize.bind(this);
-    // api binds
     this.scrollTo = this.scrollTo.bind(this);
     this._handleScroll = this._handleScroll.bind(this);
+    this._handleWheel = this._handleWheel.bind(this);
 
     this.subscription = new Subscription();
+    this.scrollX = new Scroll();
+    this.scrollY = new Scroll();
   }
   render() {
     const {
@@ -147,14 +163,15 @@ class MagicScrollNative extends React.PureComponent<
       <Panel
         resize={detectResize}
         barPos={verticalNativeBarPos}
-        handleResize={this._handleResize}
         barsState={barState}
-        handleScroll={this._handleScroll}
         renderPanel={renderPanel}
         renderView={renderView}
         ref={this.panel}
         scrollingX={scrollingX}
         scrollingY={scrollingY}
+        handleResize={this._handleResize}
+        handleScroll={this._handleScroll}
+        handleWheel={this._handleWheel}
       >
         {children}
       </Panel>
@@ -211,36 +228,65 @@ class MagicScrollNative extends React.PureComponent<
     return barState;
   }
 
-  _scrollTo(x, y, animate = true) {
+  _scrollTo(x, y, speed?: number, easing?: EasingPatterns) {
     const panelElm = this._getDomByRef('panel') as Element;
+    const {
+      scrollLeft,
+      scrollTop,
+      scrollHeight,
+      scrollWidth,
+      clientWidth,
+      clientHeight
+    } = panelElm;
     // Normalize...
     if (typeof x === 'undefined') {
       x = panelElm.scrollLeft;
     } else {
-      x = normalizeSize(x, panelElm.scrollWidth - panelElm.clientWidth);
+      x = normalizeSize(x, scrollWidth - clientWidth);
     }
     if (typeof y === 'undefined') {
       y = panelElm.scrollTop;
     } else {
-      y = normalizeSize(y, panelElm.scrollHeight - panelElm.clientHeight);
+      y = normalizeSize(y, scrollHeight - clientHeight);
     }
 
-    if (animate) {
-      // hadnle for scroll complete
-      const scrollingComplete = this._scrollComptelte.bind(this);
-      // options
-      const { easing, speed } = this.props;
-      smoothScroll(
-        panelElm,
-        x - panelElm.scrollLeft,
-        y - panelElm.scrollTop,
-        speed,
-        easing,
-        scrollingComplete
+    // hadnle for scroll complete
+    const scrollingComplete = this._scrollComptelte.bind(this);
+    // options
+    const { easing: optionEasing, speed: optionSpeed } = this.props;
+    const easingMethod = createEasingFunction(
+      easing || optionEasing,
+      easingPattern
+    );
+
+    if (x - scrollLeft) {
+      // move x
+      this.scrollX.startScroll(
+        scrollLeft,
+        x,
+        speed || optionSpeed,
+        (dx) => {
+          panelElm.scrollLeft = dx;
+        },
+        scrollingComplete,
+        undefined,
+        easingMethod
       );
-    } else {
-      panelElm.scrollTop = y;
-      panelElm.scrollLeft = x;
+    }
+
+    if (y - scrollTop) {
+      // move Y
+      this.scrollY.startScroll(
+        scrollTop,
+        y,
+        speed,
+        (dy) => {
+          panelElm.scrollTop = dy;
+        },
+        scrollingComplete,
+        undefined,
+        easingMethod
+      );
     }
   }
   _refresh() {
@@ -257,8 +303,20 @@ class MagicScrollNative extends React.PureComponent<
     this.refresh();
   }
 
+  _handleWheel(dir, val) {
+    const speed = this.props.wheelScrollDuration;
+    this.scrollBy(
+      {
+        [dir]: val
+      },
+      speed
+    );
+  }
+
   _scrollComptelte() {
-    console.log('scroll complelte...');
+    if (this.props.onScrollComplete) {
+      this.props.onScrollComplete();
+    }
   }
 
   _onBarDrag(direction: 'x' | 'y', percent) {
@@ -270,7 +328,7 @@ class MagicScrollNative extends React.PureComponent<
       {
         [direction]: dest
       },
-      false
+      0
     );
   }
 
@@ -284,10 +342,10 @@ class MagicScrollNative extends React.PureComponent<
 
   /** Public methods */
 
-  scrollTo({ x, y }: Dest, animate: boolean = true) {
-    this._scrollTo(x, y, animate);
+  scrollTo({ x, y }: Dest, speed?: number, easing?: EasingPatterns) {
+    this._scrollTo(x, y, speed, easing);
   }
-  scrollBy({ x, y }: Dest, animate: boolean = true) {
+  scrollBy({ x, y }: Dest, speed?: number, easing?: EasingPatterns) {
     const {
       scrollWidth,
       scrollHeight,
@@ -302,7 +360,7 @@ class MagicScrollNative extends React.PureComponent<
       scrollTop += normalizeSize(y, scrollHeight - clientHeight);
     }
 
-    this._scrollTo(scrollLeft, scrollTop, animate);
+    this._scrollTo(scrollLeft, scrollTop, speed, easing);
   }
   refresh() {
     this._refresh();

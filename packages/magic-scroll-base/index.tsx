@@ -86,7 +86,7 @@ interface Props {
   /**
    * Rail's opacity.
    */
-  railOp?: number;
+  railOpacity?: number;
 
   /**
    * Rail's calss.
@@ -249,7 +249,7 @@ export function enhance<wrappedCompProps>(
         barCls,
         barOpacity,
         barMinSize,
-        railOp,
+        railOpacity,
         railSize,
         railBorderRadius,
         railBorder,
@@ -266,7 +266,7 @@ export function enhance<wrappedCompProps>(
         railBg,
         railCls,
         keepRailShow,
-        railOp,
+        railOpacity,
         railSize,
         railBorder,
         railBorderRadius,
@@ -414,16 +414,13 @@ export function enhance<wrappedCompProps>(
     _setContainerSizeStrategy(strat) {
       const container = this._getDomByRef('container');
 
-      if (this._destroyContainerResize) {
-        this._destroyContainerResize();
-        this._destroyContainerResize = null;
-      }
-
       if (strat == 'percent') {
+        /* istanbul ignore if */
         if (this._destroyContainerResize) {
           this._destroyContainerResize();
           this._destroyContainerResize = null;
         }
+
         this._setPercentSize(container);
       } else if (strat == 'number') {
         if (!this._destroyContainerResize) {
@@ -495,7 +492,7 @@ export function enhance<wrappedCompProps>(
         {
           [type]: move
         },
-        false /* whether to animate */
+        0
       );
     }
 

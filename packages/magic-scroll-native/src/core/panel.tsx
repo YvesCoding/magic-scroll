@@ -20,6 +20,7 @@ interface Props {
   scrollingX: boolean;
   scrollingY: boolean;
   handleScroll(event: React.SyntheticEvent): void;
+  handleWheel(dir: 'x' | 'y', value: any): void;
   handleResize(event: string): void;
   renderView?(props?: any): React.ReactElement<any>;
   renderPanel?(props?: any): React.ReactElement<any>;
@@ -39,6 +40,7 @@ export default class View extends React.PureComponent<Props> {
 
     // bind internal methods
     this._handleScroll = this._handleScroll.bind(this);
+    this._handleWheel = this._handleWheel.bind(this);
 
     this.subscription = new Subscription();
   }
@@ -137,8 +139,42 @@ export default class View extends React.PureComponent<Props> {
   }
   /** Internal Medthds */
   _handleScroll(e: any) {
-    console.log('handle scrolling...');
     this.props.handleScroll(e);
+  }
+  _handleWheel(event: any) {
+    event.stopPropagation();
+    event.preventDefault();
+
+    let delta = 0;
+    let dir;
+    if (event.wheelDelta) {
+      if (event.deltaY) {
+        dir = 'y';
+        delta = event.deltaY;
+      } else if (event.deltaYX) {
+        delta = event.deltaX;
+        dir = 'x';
+      } else {
+        if (event.shiftKey) {
+          dir = 'x';
+        } else {
+          dir = 'y';
+        }
+
+        delta = (-1 * event.wheelDelta) / 2;
+      }
+    } else if (event.detail) {
+      // horizontal scroll
+      if (event.axis == 1) {
+        dir = 'x';
+      } else if (event.axis == 2) {
+        // vertical scroll
+        dir = 'y';
+      }
+      delta = event.detail * 16;
+    }
+
+    this.props.handleWheel(dir, delta);
   }
   _detectResize(element) {
     if (element.removeResize) {
@@ -160,9 +196,13 @@ export default class View extends React.PureComponent<Props> {
   _addEvent() {
     const panelElm = getDom(this.refs.panel);
     eventOnOff(panelElm, 'scroll', this._handleScroll);
+    eventOnOff(panelElm, 'mousewheel', this._handleWheel);
+    eventOnOff(panelElm, 'onMouseWheel', this._handleWheel);
 
     this.subscription.subscribe(View.unmount_key, () => {
       eventOnOff(panelElm, 'scroll', this._handleScroll, false, 'off');
+      eventOnOff(panelElm, 'mousewheel', this._handleWheel, false, 'off');
+      eventOnOff(panelElm, 'onMouseWheel', this._handleWheel, false, 'off');
     });
   }
 }
