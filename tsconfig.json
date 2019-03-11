@@ -9,5 +9,5 @@
     "importHelpers": true
   },
   "exclude": ["node_modules"],
-  "include": ["packages/**/*"]
+  "include": ["src/**/*"]
 }

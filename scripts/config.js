@@ -23,14 +23,13 @@ function getPkgInfo(dirOfPackageJson) {
 }
 
 const resolve = (p) => {
-  return path.resolve('./packages', p);
+  return path.resolve('./src', p);
 };
 
 const builds = {
   'magic-scroll-native-umd': {
-    pkgName: 'magic-scroll-native',
-    entry: resolve('magic-scroll-native/index.tsx'),
-    dest: resolve('magic-scroll-native/dist/magic-scroll.js'),
+    entry: resolve('native/index.tsx'),
+    dest: resolve('../dist/magic-scroll.js'),
     format: 'umd',
     external: ['react', 'react-dom', 'prop-types']
   }
@@ -45,7 +44,7 @@ const builds = {
 
 function genConfig(name) {
   const opts = builds[name];
-  const pkgInfo = getPkgInfo(resolve(`${opts.pkgName}/package.json`));
+  const pkgInfo = getPkgInfo(resolve(`../package.json`));
 
   const config = {
     input: opts.entry,

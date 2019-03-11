@@ -1,8 +1,7 @@
 {
-  "private": true,
   "dependencies": {
-    "react": "^16.7.0",
-    "react-dom": "^16.7.0"
+    "react": "^16.8.0",
+    "react-dom": "^16.8.0"
   },
   "devDependencies": {
     "@babel/cli": "^7.2.3",
@@ -39,7 +38,6 @@
     "rollup-plugin-node-resolve": "^3.0.2",
     "rollup-plugin-postcss": "^1.6.3",
     "rollup-plugin-replace": "^2.0.0",
-    "rollup-plugin-scss": "^0.4.0",
     "rollup-plugin-typescript": "^0.8.1",
     "rollup-plugin-uglify": "^4.0.0",
     "ts-jest": "^23.10.5",
@@ -60,10 +58,11 @@
   "scripts": {
     "build": "cross-env BABEL_ENV=build node scripts/build.js",
     "debug-build": "cross-env BABEL_ENV=build node scripts/auto-build.js",
-    "demo": "cross-env NODE_ENV=development node ./packages/magic-scroll-demo/server.js",
+    "demo": "cross-env NODE_ENV=development node ./src/demo/server.js",
     "release": "node scripts/release.js",
     "test": "jest --config jest.config.js --collectCoverage",
     "bootstrap": "npx lerna bootstrap"
   },
-  "name": "magic-scroll"
+  "name": "magic-scroll",
+  "version": "0.0.1"
 }

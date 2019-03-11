@@ -8,7 +8,7 @@ let timeout;
 print('Start building in debug mode....\n');
 
 chokidar
-  .watch(path.resolve(__dirname, '../packages'), {
+  .watch(path.resolve(__dirname, '../src'), {
     recursive: true,
     ignored: /dist/,
     persistent: true,

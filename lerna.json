@@ -1,5 +1,0 @@
-{
-  "npmClient": "cnpm",
-  "version": "independent",
-  "packages": ["packages/*"]
-}
