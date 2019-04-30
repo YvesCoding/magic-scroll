@@ -374,7 +374,7 @@ export function enhance<wrappedCompProps>(
     _updateBar() {
       const barState = this.wrappedComp._getBarState();
       if (barState) {
-        this.setState((pre) => {
+        this.setState(pre => {
           return {
             barState: {
               ...barState,
@@ -386,7 +386,7 @@ export function enhance<wrappedCompProps>(
     }
     _showBar() {
       // Show bar
-      this.setState((prevState) => {
+      this.setState(prevState => {
         return {
           barState: {
             ...prevState.barState,
@@ -398,7 +398,7 @@ export function enhance<wrappedCompProps>(
     _hideBar() {
       // Hide bar
       if (this._canHideBar()) {
-        this.setState((prevState) => {
+        this.setState(prevState => {
           return {
             barState: {
               ...prevState.barState,

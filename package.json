@@ -65,5 +65,6 @@
   },
   "name": "magic-scroll",
   "version": "0.0.1",
-  "main": "dist/magic-scroll.js"
+  "main": "dist/magic-scroll.js",
+  "typings": "types/index.d.ts"
 }
