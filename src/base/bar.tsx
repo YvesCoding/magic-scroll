@@ -582,7 +582,7 @@ export default function createBar(
   const isVBarHide = !vBarState.size;
   const isHBarHide = !hBarState.size;
   const vBar =
-    vBarState.size || barProps.keepRailShow ? (
+    (vBarState.size || barProps.keepRailShow) && !vBarState.disable ? (
       <Bar
         {...{
           ...barProps,
@@ -599,7 +599,7 @@ export default function createBar(
     ) : null;
 
   const hBar =
-    vBarState.size || barProps.keepRailShow ? (
+    (vBarState.size || barProps.keepRailShow) && !hBarState.disable ? (
       <Bar
         {...{
           ...barProps,

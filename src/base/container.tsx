@@ -66,14 +66,13 @@ export default class BaseScroll extends React.PureComponent<Props> {
     if (renderContainer) {
       // React the cloned element
       return React.cloneElement(
-        renderContainer(),
-        {
+        renderContainer({
           ref: 'container',
           className,
           ...eventObj,
           ...others,
           style
-        },
+        }),
         ch
       );
     } else {

@@ -8,10 +8,12 @@ function injectObject(element, callback) {
     return;
   }
 
+  createStyles(element.ownerDocument);
+
   if (getComputedStyle(element).position === 'static') {
     element.style.position = 'relative'; // 将static改为relative
   }
-  element.__resizeListener__ = e => {
+  element.__resizeListener__ = (e) => {
     e.stopImmediatePropagation();
     e.preventDefault();
     callback();
@@ -35,16 +37,18 @@ function injectObject(element, callback) {
   expand.addEventListener('scroll', element.__resizeListener__, true);
   contract.addEventListener('scroll', element.__resizeListener__, true);
 
-  return (element.removeResize = () => {
-    // Remove
-    element.removeEventListener('scroll', element.__resizeListener__, true);
-    element.removeChild(element.__resizeTrigger__);
-    element.__resizeListener__ = element.__resizeTrigger__ = null;
-    delete element.removeResize;
-  });
+  return (
+    (element.removeResize = () => {
+      // Remove
+      element.removeEventListener('scroll', element.__resizeListener__, true);
+      element.removeChild(element.__resizeTrigger__);
+      element.__resizeListener__ = element.__resizeTrigger__ = null;
+      delete element.removeResize;
+    }) && element
+  );
 }
 
-const resetTrigger = element => {
+const resetTrigger = (element) => {
   const trigger = element.__resizeTrigger__;
   const expand = getExpand(trigger);
   const contract = getContract(trigger);
@@ -57,9 +61,32 @@ const resetTrigger = element => {
   expand.scrollTop = expand.scrollHeight;
 };
 
-const getExpand = elm => {
+const getExpand = (elm) => {
   return elm.firstElementChild;
 };
-const getContract = elm => {
+const getContract = (elm) => {
   return elm.lastElementChild;
+};
+
+var createStyles = function(doc) {
+  if (!doc.getElementById('detectElementResize')) {
+    //opacity:0 works around a chrome bug https://code.google.com/p/chromium/issues/detail?id=286360
+    var css =
+        '.resize-triggers { ' +
+        'visibility: hidden; opacity: 0; } ' +
+        '.resize-triggers, .resize-triggers > div, .contract-trigger:before { content: " "; display: block; position: absolute; top: 0; left: 0; height: 100%; width: 100%; overflow: hidden; z-index: -1; } .resize-triggers > div { background: #eee; overflow: auto; } .contract-trigger:before { width: 200%; height: 200%; }',
+      head = doc.head || doc.getElementsByTagName('head')[0],
+      style = doc.createElement('style');
+
+    style.id = 'detectElementResize';
+    style.type = 'text/css';
+
+    if (style.styleSheet) {
+      style.styleSheet.cssText = css;
+    } else {
+      style.appendChild(doc.createTextNode(css));
+    }
+
+    head.appendChild(style);
+  }
 };

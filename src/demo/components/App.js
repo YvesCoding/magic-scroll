@@ -14,7 +14,7 @@ class Test extends React.PureComponent {
           railSize="20px"
           barKeepShowTime={500}
           sizeStrategy="foo"
-          wheelScrollDuration={500}
+          wheelSpeed={500}
         >
           <div style={{ height: '1400px', width: '1400px' }} />
         </ScrollBar>

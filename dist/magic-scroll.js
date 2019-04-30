@@ -5,10 +5,10 @@
  */
 
 (function (global, factory) {
-	typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('react-dom'), require('react')) :
-	typeof define === 'function' && define.amd ? define(['react-dom', 'react'], factory) :
-	(global['magic-scroll'] = factory(global.ReactDOM,global.react));
-}(this, (function (ReactDom,React) { 'use strict';
+	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('react-dom'), require('react')) :
+	typeof define === 'function' && define.amd ? define(['exports', 'react-dom', 'react'], factory) :
+	(factory((global['magic-scroll'] = {}),global.ReactDOM,global.react));
+}(this, (function (exports,ReactDom,React) { 'use strict';
 
 // detect content size change
 function listenResize(element, callback) {
@@ -19,6 +19,8 @@ function injectObject(element, callback) {
   if (element.__resizeTrigger__) {
     return;
   }
+
+  createStyles(element.ownerDocument);
 
   if (getComputedStyle(element).position === 'static') {
     element.style.position = 'relative'; // 将static改为relative
@@ -45,13 +47,13 @@ function injectObject(element, callback) {
   expand.addEventListener('scroll', element.__resizeListener__, true);
   contract.addEventListener('scroll', element.__resizeListener__, true);
 
-  return element.removeResize = () => {
+  return (element.removeResize = () => {
     // Remove
     element.removeEventListener('scroll', element.__resizeListener__, true);
     element.removeChild(element.__resizeTrigger__);
     element.__resizeListener__ = element.__resizeTrigger__ = null;
     delete element.removeResize;
-  };
+  }) && element;
 }
 
 const resetTrigger = element => {
@@ -72,6 +74,26 @@ const getExpand = elm => {
 };
 const getContract = elm => {
   return elm.lastElementChild;
+};
+
+var createStyles = function (doc) {
+  if (!doc.getElementById('detectElementResize')) {
+    //opacity:0 works around a chrome bug https://code.google.com/p/chromium/issues/detail?id=286360
+    var css = '.resize-triggers { ' + 'visibility: hidden; opacity: 0; } ' + '.resize-triggers, .resize-triggers > div, .contract-trigger:before { content: " "; display: block; position: absolute; top: 0; left: 0; height: 100%; width: 100%; overflow: hidden; z-index: -1; } .resize-triggers > div { background: #eee; overflow: auto; } .contract-trigger:before { width: 200%; height: 200%; }',
+        head = doc.head || doc.getElementsByTagName('head')[0],
+        style = doc.createElement('style');
+
+    style.id = 'detectElementResize';
+    style.type = 'text/css';
+
+    if (style.styleSheet) {
+      style.styleSheet.cssText = css;
+    } else {
+      style.appendChild(doc.createTextNode(css));
+    }
+
+    head.appendChild(style);
+  }
 };
 
 function requestAnimationFrame(global) {
@@ -393,8 +415,8 @@ class Panel extends React.PureComponent {
             position: 'relative'
         };
         if (renderPanel) {
-            return React.cloneElement(renderPanel(), Object.assign({ className,
-                style }, others), children);
+            return React.cloneElement(renderPanel(Object.assign({ className,
+                style }, others)), {}, children);
         } else {
             return React.createElement("div", Object.assign({ className: className, style: style }, others), children);
         }
@@ -510,16 +532,16 @@ class NativePanel extends React.PureComponent {
             minWidth: '100%'
         };
         const widthStyle = getComplitableStyle('width', 'fit-content');
-        if (widthStyle) {
+        if (widthStyle && scrollingX) {
             viewStyle.width = widthStyle;
         }
         let view;
         if (renderView) {
-            view = React.cloneElement(renderView(this.props), {
+            view = React.cloneElement(renderView({
                 className: '__view',
-                ref: 'view',
-                style: viewStyle
-            }, children);
+                style: viewStyle,
+                ref: 'view'
+            }), {}, children);
         } else {
             view = React.createElement("div", { className: "__view", ref: "view", style: viewStyle }, children);
         }
@@ -541,36 +563,39 @@ class NativePanel extends React.PureComponent {
         this.props.handleScroll(e);
     }
     _handleWheel(event) {
-        event.stopPropagation();
-        event.preventDefault();
         let delta = 0;
         let dir;
+        const { scrollingX, scrollingY, wheelSpeed } = this.props;
         if (event.wheelDelta) {
             if (event.deltaY) {
-                dir = 'y';
+                dir = 'dy';
                 delta = event.deltaY;
             } else if (event.deltaYX) {
                 delta = event.deltaX;
-                dir = 'x';
+                dir = 'dx';
             } else {
                 if (event.shiftKey) {
-                    dir = 'x';
+                    dir = 'dx';
                 } else {
-                    dir = 'y';
+                    dir = 'dy';
                 }
                 delta = -1 * event.wheelDelta / 2;
             }
         } else if (event.detail) {
             // horizontal scroll
             if (event.axis == 1) {
-                dir = 'x';
+                dir = 'dx';
             } else if (event.axis == 2) {
                 // vertical scroll
-                dir = 'y';
+                dir = 'dy';
             }
             delta = event.detail * 16;
         }
-        this.props.handleWheel(dir, delta);
+        if (wheelSpeed && (scrollingX && dir == 'dx' || scrollingY && dir == 'dy')) {
+            event.stopPropagation();
+            event.preventDefault();
+            this.props.scrollBy({ [dir]: delta }, wheelSpeed);
+        }
     }
     _detectResize(element) {
         if (element.removeResize) {
@@ -963,14 +988,14 @@ function createScrollbarButton(context, type) {
 function createBar(barProps, vBarState, hBarState, opacity) {
     const isVBarHide = !vBarState.size;
     const isHBarHide = !hBarState.size;
-    const vBar = vBarState.size || barProps.keepRailShow ? React.createElement(Bar, Object.assign({}, Object.assign({}, barProps, {
+    const vBar = (vBarState.size || barProps.keepRailShow) && !vBarState.disable ? React.createElement(Bar, Object.assign({}, Object.assign({}, barProps, {
         barsState: vBarState,
         horizontal: false,
         hideBar: isVBarHide,
         otherBarHide: isHBarHide,
         opacity
     }), { key: "vBar" })) : null;
-    const hBar = vBarState.size || barProps.keepRailShow ? React.createElement(Bar, Object.assign({}, Object.assign({}, barProps, {
+    const hBar = (vBarState.size || barProps.keepRailShow) && !hBarState.disable ? React.createElement(Bar, Object.assign({}, Object.assign({}, barProps, {
         barsState: hBarState,
         horizontal: true,
         hideBar: isHBarHide,
@@ -1010,7 +1035,7 @@ class BaseScroll extends React.PureComponent {
         }
         if (renderContainer) {
             // React the cloned element
-            return React.cloneElement(renderContainer(), Object.assign({ ref: 'container', className }, eventObj, others, { style }), ch);
+            return React.cloneElement(renderContainer(Object.assign({ ref: 'container', className }, eventObj, others, { style })), ch);
         } else {
             return React.createElement("div", Object.assign({ ref: "container" }, eventObj, { className: className }, others, { style: style }), ch);
         }
@@ -1077,6 +1102,7 @@ function warn(condition, message) {
     }
 }
 
+const GlobarBarOptionsContext = React.createContext({});
 function enhance(WrapperComponent) {
     class MagicScrollBase extends React.PureComponent {
         /* --------------------- Lifecycle Methods ------------------------ */
@@ -1120,9 +1146,9 @@ function enhance(WrapperComponent) {
             this.subscription = new Subscription();
         }
         render() {
-            const _a = this.props,
-                  { wrappedCompRef, children, style, className, renderContainer, barBorderRadius, barSize, railBg, railCls, barBg, barCls, barOpacity, barMinSize, railOpacity, railSize, railBorderRadius, railBorder, keepRailShow, scrollButtonBg, scrollButtonClickStep, scrollButtonEnable, scrollButtonPressingStep } = _a,
-                  otherProps = __rest(_a, ["wrappedCompRef", "children", "style", "className", "renderContainer", "barBorderRadius", "barSize", "railBg", "railCls", "barBg", "barCls", "barOpacity", "barMinSize", "railOpacity", "railSize", "railBorderRadius", "railBorder", "keepRailShow", "scrollButtonBg", "scrollButtonClickStep", "scrollButtonEnable", "scrollButtonPressingStep"]);
+            const mergedProps = Object.assign({}, this.context, this.props);
+            const { wrappedCompRef, children, style, className, renderContainer, barBorderRadius, barSize, railBg, railCls, barBg, barCls, barOpacity, barMinSize, railOpacity, railSize, railBorderRadius, railBorder, keepRailShow, scrollButtonBg, scrollButtonClickStep, scrollButtonEnable, scrollButtonPressingStep } = mergedProps,
+                  otherProps = __rest(mergedProps, ["wrappedCompRef", "children", "style", "className", "renderContainer", "barBorderRadius", "barSize", "railBg", "railCls", "barBg", "barCls", "barOpacity", "barMinSize", "railOpacity", "railSize", "railBorderRadius", "railBorder", "keepRailShow", "scrollButtonBg", "scrollButtonClickStep", "scrollButtonEnable", "scrollButtonPressingStep"]);
             const { barState } = this.state;
             const barProps = {
                 railBg,
@@ -1166,6 +1192,8 @@ function enhance(WrapperComponent) {
             this._refresh();
             // initial scroll
             this._triggerInitialScroll();
+            // detect container resize
+            this._detectContainerResize();
         }
         componentWillUnmount() {
             this.subscription.notify(MagicScrollBase.unmount_key);
@@ -1229,36 +1257,34 @@ function enhance(WrapperComponent) {
         _setContainerSizeStrategy(strat) {
             const container = this._getDomByRef('container');
             if (strat == 'percent') {
-                /* istanbul ignore if */
-                if (this._destroyContainerResize) {
-                    this._destroyContainerResize();
-                    this._destroyContainerResize = null;
-                }
                 this._setPercentSize(container);
             } else if (strat == 'number') {
-                if (!this._destroyContainerResize) {
-                    this.subscription.subscribe(MagicScrollBase.unmount_key, this._destroyContainerResize = this._setNumberSize(container));
-                }
+                this._setNumberSize(container);
             } else {
                 warn(false, `Unexpected strategy: ${strat}, except 'percent' or 'number'.`);
                 // fallback to percent.
                 this._setContainerSizeStrategy('percent');
             }
         }
+        _detectContainerResize() {
+            if (!this._destroyContainerResize) {
+                this.subscription.subscribe(MagicScrollBase.unmount_key, this._destroyContainerResize = listenResize(this._getDomByRef('container'), () => {
+                    this._refresh();
+                }).removeResize);
+            }
+        }
         _setPercentSize(elm) {
-            elm.style.height = '100%';
-            elm.style.width = '100%';
+            elm.style.height = this.props.style.height || '100%';
+            elm.style.width = this.props.style.width || '100%';
         }
         _setNumberSize(elm) {
             const parent = elm.parentNode;
             const setConainerSize = () => {
-                elm.style.height = parent.offsetHeight + 'px';
-                elm.style.width = parent.offsetWidth + 'px';
+                elm.style.height = this.props.style.height || parent.offsetHeight + 'px';
+                elm.style.width = this.props.style.width || parent.offsetWidth + 'px';
                 this._updateBar();
             };
-            listenResize(parent, setConainerSize);
             setConainerSize(); // fire an once!;
-            return elm.removeResize;
         }
         _triggerInitialScroll() {
             const { initialScrollX: x, initialScrollY: y } = this.props;
@@ -1320,11 +1346,14 @@ function enhance(WrapperComponent) {
         sizeStrategy: 'percent',
         detectResize: true,
         initialScrollY: false,
-        initialScrollX: false
+        initialScrollX: false,
+        style: {}
     };
     MagicScrollBase.displayName = 'magic-scroll-base';
     /** trigger beofore component will unmount */
     MagicScrollBase.unmount_key = 'UNMOUNT_SUBSCRIBE';
+    // global options
+    MagicScrollBase.contextType = GlobarBarOptionsContext;
     return React.forwardRef((props, ref) => {
         return React.createElement(MagicScrollBase, Object.assign({}, props, { wrappedCompRef: ref }));
     });
@@ -1359,16 +1388,16 @@ class MagicScrollNative extends React.PureComponent {
         this._handleResize = this._handleResize.bind(this);
         this.scrollTo = this.scrollTo.bind(this);
         this._handleScroll = this._handleScroll.bind(this);
-        this._handleWheel = this._handleWheel.bind(this);
+        this.scrollBy = this.scrollBy.bind(this);
         this.subscription = new Subscription();
         this.scrollX = new Animate();
         this.scrollY = new Animate();
     }
     render() {
-        const { children, renderPanel, renderView, scrollingX, scrollingY } = this.props;
+        const { children, renderPanel, renderView, wheelSpeed, scrollingX, scrollingY } = this.props;
         const { verticalNativeBarPos } = this.props;
         const barState = this.state.barState;
-        return React.createElement(NativePanel, { resize: listenResize, barPos: verticalNativeBarPos, barsState: barState, renderPanel: renderPanel, renderView: renderView, ref: this.panel, scrollingX: scrollingX, scrollingY: scrollingY, handleResize: this._handleResize, handleScroll: this._handleScroll, handleWheel: this._handleWheel }, children);
+        return React.createElement(NativePanel, { resize: listenResize, barPos: verticalNativeBarPos, barsState: barState, renderPanel: renderPanel, renderView: renderView, wheelSpeed: wheelSpeed, ref: this.panel, scrollingX: scrollingX, scrollingY: scrollingY, scrollBy: this.scrollBy, handleResize: this._handleResize, handleScroll: this._handleScroll }, children);
     }
     componentDidMount() {
         this._refresh();
@@ -1450,12 +1479,6 @@ class MagicScrollNative extends React.PureComponent {
     _handleResize() {
         this.refresh();
     }
-    _handleWheel(dir, val) {
-        const speed = this.props.wheelScrollDuration;
-        this.scrollBy({
-            [dir]: val
-        }, speed);
-    }
     _scrollComptelte() {
         if (this.props.onScrollComplete) {
             this.props.onScrollComplete();
@@ -1501,7 +1524,7 @@ MagicScrollNative.defaultProps = {
     scrollingY: true,
     speed: 300,
     easing: undefined,
-    wheelScrollDuration: 0,
+    wheelSpeed: 0,
     verticalNativeBarPos: 'right'
 };
 MagicScrollNative.displayName = 'magic-scroll-native';
@@ -1509,6 +1532,9 @@ MagicScrollNative.displayName = 'magic-scroll-native';
 MagicScrollNative.unmount_key = 'UNMOUNT_SUBSCRIBE';
 var index = enhance(MagicScrollNative);
 
-return index;
+exports.default = index;
+exports.GlobarBarOptionsContext = GlobarBarOptionsContext;
+
+Object.defineProperty(exports, '__esModule', { value: true });
 
 })));

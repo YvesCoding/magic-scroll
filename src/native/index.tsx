@@ -10,7 +10,7 @@ import { normalizeSize, getDom } from '../utils/dom';
 import { Subscription } from '../utils/subscription';
 
 import Panel from './panel';
-import { enhance } from '../base';
+import { enhance, GlobarBarOptionsContext } from '../base';
 
 interface Dest {
   x?: string | number;
@@ -56,7 +56,7 @@ interface Props {
   /**
    * The scrolling speed while using mouse wheel.
    */
-  wheelScrollDuration: number;
+  wheelSpeed: number;
 
   /** ---------- Customizable render function ----------------- */
 
@@ -96,7 +96,7 @@ class MagicScrollNative extends React.PureComponent<
     scrollingY: true,
     speed: 300,
     easing: undefined,
-    wheelScrollDuration: 0,
+    wheelSpeed: 0,
     verticalNativeBarPos: 'right'
   };
   static displayName = 'magic-scroll-native';
@@ -142,7 +142,7 @@ class MagicScrollNative extends React.PureComponent<
     this._handleResize = this._handleResize.bind(this);
     this.scrollTo = this.scrollTo.bind(this);
     this._handleScroll = this._handleScroll.bind(this);
-    this._handleWheel = this._handleWheel.bind(this);
+    this.scrollBy = this.scrollBy.bind(this);
 
     this.subscription = new Subscription();
     this.scrollX = new Animate();
@@ -153,11 +153,13 @@ class MagicScrollNative extends React.PureComponent<
       children,
       renderPanel,
       renderView,
+      wheelSpeed,
       scrollingX,
       scrollingY
     } = this.props;
     const { verticalNativeBarPos } = this.props;
     const barState = this.state.barState;
+
     return (
       <Panel
         resize={detectResize}
@@ -165,12 +167,13 @@ class MagicScrollNative extends React.PureComponent<
         barsState={barState}
         renderPanel={renderPanel}
         renderView={renderView}
+        wheelSpeed={wheelSpeed}
         ref={this.panel}
         scrollingX={scrollingX}
         scrollingY={scrollingY}
+        scrollBy={this.scrollBy}
         handleResize={this._handleResize}
         handleScroll={this._handleScroll}
-        handleWheel={this._handleWheel}
       >
         {children}
       </Panel>
@@ -302,16 +305,6 @@ class MagicScrollNative extends React.PureComponent<
     this.refresh();
   }
 
-  _handleWheel(dir, val) {
-    const speed = this.props.wheelScrollDuration;
-    this.scrollBy(
-      {
-        [dir]: val
-      },
-      speed
-    );
-  }
-
   _scrollComptelte() {
     if (this.props.onScrollComplete) {
       this.props.onScrollComplete();
@@ -369,3 +362,5 @@ class MagicScrollNative extends React.PureComponent<
 }
 
 export default enhance<Props>(MagicScrollNative);
+
+export { GlobarBarOptionsContext };

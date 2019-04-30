@@ -14,12 +14,12 @@ export default class Panel extends React.PureComponent<any> {
     };
     if (renderPanel) {
       return React.cloneElement(
-        renderPanel(),
-        {
+        renderPanel({
           className,
           style,
           ...others
-        },
+        }),
+        {},
         children
       );
     } else {

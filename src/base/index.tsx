@@ -160,6 +160,10 @@ interface States {
   barState: BarStates;
 }
 
+const GlobarBarOptionsContext = React.createContext({});
+
+export { GlobarBarOptionsContext };
+
 export function enhance<wrappedCompProps>(
   WrapperComponent: React.ComponentClass<any>
 ) {
@@ -169,13 +173,17 @@ export function enhance<wrappedCompProps>(
       sizeStrategy: 'percent',
       detectResize: true,
       initialScrollY: false,
-      initialScrollX: false
+      initialScrollX: false,
+      style: {}
     };
 
     static displayName = 'magic-scroll-base';
 
     /** trigger beofore component will unmount */
     static unmount_key = 'UNMOUNT_SUBSCRIBE';
+
+    // global options
+    static contextType = GlobarBarOptionsContext;
 
     /** Subscription */
     subscription: Subscription;
@@ -235,6 +243,8 @@ export function enhance<wrappedCompProps>(
     }
 
     render() {
+      const mergedProps = Object.assign({}, this.context, this.props);
+
       const {
         wrappedCompRef,
         children,
@@ -259,7 +269,8 @@ export function enhance<wrappedCompProps>(
         scrollButtonEnable,
         scrollButtonPressingStep,
         ...otherProps
-      } = this.props;
+      } = mergedProps;
+
       const { barState } = this.state;
 
       const barProps = {
@@ -337,6 +348,8 @@ export function enhance<wrappedCompProps>(
       this._refresh();
       // initial scroll
       this._triggerInitialScroll();
+      // detect container resize
+      this._detectContainerResize();
     }
     componentWillUnmount() {
       this.subscription.notify(MagicScrollBase.unmount_key);
@@ -415,20 +428,9 @@ export function enhance<wrappedCompProps>(
       const container = this._getDomByRef('container');
 
       if (strat == 'percent') {
-        /* istanbul ignore if */
-        if (this._destroyContainerResize) {
-          this._destroyContainerResize();
-          this._destroyContainerResize = null;
-        }
-
         this._setPercentSize(container);
       } else if (strat == 'number') {
-        if (!this._destroyContainerResize) {
-          this.subscription.subscribe(
-            MagicScrollBase.unmount_key,
-            (this._destroyContainerResize = this._setNumberSize(container))
-          );
-        }
+        this._setNumberSize(container);
       } else {
         warn(
           false,
@@ -438,22 +440,34 @@ export function enhance<wrappedCompProps>(
         this._setContainerSizeStrategy('percent');
       }
     }
+    _detectContainerResize() {
+      if (!this._destroyContainerResize) {
+        this.subscription.subscribe(
+          MagicScrollBase.unmount_key,
+          (this._destroyContainerResize = detectResize(
+            this._getDomByRef('container'),
+            () => {
+              this._refresh();
+            }
+          ).removeResize)
+        );
+      }
+    }
     _setPercentSize(elm) {
-      elm.style.height = '100%';
-      elm.style.width = '100%';
+      elm.style.height = this.props.style.height || '100%';
+      elm.style.width = this.props.style.width || '100%';
     }
     _setNumberSize(elm) {
       const parent = elm.parentNode;
+
       const setConainerSize = () => {
-        elm.style.height = parent.offsetHeight + 'px';
-        elm.style.width = parent.offsetWidth + 'px';
+        elm.style.height =
+          this.props.style.height || parent.offsetHeight + 'px';
+        elm.style.width = this.props.style.width || parent.offsetWidth + 'px';
         this._updateBar();
       };
-      detectResize(parent, setConainerSize);
 
       setConainerSize(); // fire an once!;
-
-      return elm.removeResize;
     }
     _triggerInitialScroll() {
       const { initialScrollX: x, initialScrollY: y } = this.props;

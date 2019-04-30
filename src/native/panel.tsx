@@ -19,8 +19,11 @@ interface Props {
   barPos: 'right' | 'left';
   scrollingX: boolean;
   scrollingY: boolean;
+  wheelSpeed: number;
+
   handleScroll(event: React.SyntheticEvent): void;
-  handleWheel(dir: 'x' | 'y', value: any): void;
+  // For mouse wheel scroling
+  scrollBy({ x, y }: any, speed?): void;
   handleResize(event: string): void;
   renderView?(props?: any): React.ReactElement<any>;
   renderPanel?(props?: any): React.ReactElement<any>;
@@ -59,7 +62,6 @@ export default class NativePanel extends React.PureComponent<Props> {
       height: '100%'
     };
     const className = ['__native'];
-
     style.overflowY = !scrollingY
       ? 'hidden'
       : barsState.vBar.size
@@ -92,18 +94,18 @@ export default class NativePanel extends React.PureComponent<Props> {
       minWidth: '100%'
     };
     const widthStyle: any = getComplitableStyle('width', 'fit-content');
-    if (widthStyle) {
+    if (widthStyle && scrollingX) {
       viewStyle.width = widthStyle;
     }
     let view;
     if (renderView) {
       view = React.cloneElement(
-        renderView(this.props),
-        {
+        renderView({
           className: '__view',
-          ref: 'view',
-          style: viewStyle
-        },
+          style: viewStyle,
+          ref: 'view'
+        }),
+        {},
         children
       );
     } else {
@@ -142,23 +144,21 @@ export default class NativePanel extends React.PureComponent<Props> {
     this.props.handleScroll(e);
   }
   _handleWheel(event: any) {
-    event.stopPropagation();
-    event.preventDefault();
-
     let delta = 0;
     let dir;
+    const { scrollingX, scrollingY, wheelSpeed } = this.props;
     if (event.wheelDelta) {
       if (event.deltaY) {
-        dir = 'y';
+        dir = 'dy';
         delta = event.deltaY;
       } else if (event.deltaYX) {
         delta = event.deltaX;
-        dir = 'x';
+        dir = 'dx';
       } else {
         if (event.shiftKey) {
-          dir = 'x';
+          dir = 'dx';
         } else {
-          dir = 'y';
+          dir = 'dy';
         }
 
         delta = (-1 * event.wheelDelta) / 2;
@@ -166,15 +166,21 @@ export default class NativePanel extends React.PureComponent<Props> {
     } else if (event.detail) {
       // horizontal scroll
       if (event.axis == 1) {
-        dir = 'x';
+        dir = 'dx';
       } else if (event.axis == 2) {
         // vertical scroll
-        dir = 'y';
+        dir = 'dy';
       }
       delta = event.detail * 16;
     }
-
-    this.props.handleWheel(dir, delta);
+    if (
+      wheelSpeed &&
+      ((scrollingX && dir == 'dx') || (scrollingY && dir == 'dy'))
+    ) {
+      event.stopPropagation();
+      event.preventDefault();
+      this.props.scrollBy({ [dir]: delta }, wheelSpeed);
+    }
   }
   _detectResize(element) {
     if (element.removeResize) {

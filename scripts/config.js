@@ -50,6 +50,7 @@ function genConfig(name) {
     input: opts.entry,
     external: opts.external,
     output: {
+      exports: 'named',
       globals: {
         react: 'react',
         'react-dom': 'ReactDOM',

@@ -64,5 +64,6 @@
     "bootstrap": "npx lerna bootstrap"
   },
   "name": "magic-scroll",
-  "version": "0.0.1"
+  "version": "0.0.1",
+  "main": "dist/magic-scroll.js"
 }
