@@ -183,8 +183,13 @@ interface Props {
   renderContainer?(props?: any): React.ReactElement<any>;
 }
 
-export default class MagicScroll extends React.PureComponent<Props> {
+declare class MagicScroll extends React.PureComponent<Props> {
   scrollTo({ x, y }: Dest, speed?: number, easing?: EasingPatterns): void;
   scrollBy({ x, y }: Dest, speed?: number, easing?: EasingPatterns): void;
   refresh(): void;
 }
+
+declare const GlobarBarOptionsContext: React.Context<Props>;
+
+export { GlobarBarOptionsContext };
+export default MagicScroll;

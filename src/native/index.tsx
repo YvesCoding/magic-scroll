@@ -1,10 +1,10 @@
 import * as React from 'react';
-import detectResize from '../vender//resize-detector';
+import detectResize from '../vender/resize-detector';
 import {
   createEasingFunction,
   easingPattern,
   Animate
-} from '../vender//easingPattern/index';
+} from '../vender/easingPattern/index';
 
 import { normalizeSize, getDom } from '../utils/dom';
 import { Subscription } from '../utils/subscription';

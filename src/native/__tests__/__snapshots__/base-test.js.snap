@@ -5,5 +5,9 @@ exports[`Baseic Test Basic render should match snapshot 1`] = `
   <div class=\\"expand-trigger\\">
     <div style=\\"width: 101px; height: 101px;\\"></div>
   </div>
-  <div class=\\"contract-trigger\\"></div> </div></div></div></div>"
+  <div class=\\"contract-trigger\\"></div> </div></div></div><div class=\\"resize-triggers\\"> 
+  <div class=\\"expand-trigger\\">
+    <div style=\\"width: 101px; height: 101px;\\"></div>
+  </div>
+  <div class=\\"contract-trigger\\"></div> </div></div>"
 `;

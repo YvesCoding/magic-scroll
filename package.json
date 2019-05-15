@@ -59,9 +59,8 @@
     "build": "cross-env BABEL_ENV=build node scripts/build.js",
     "debug-build": "cross-env BABEL_ENV=build node scripts/auto-build.js",
     "demo": "cross-env NODE_ENV=development node ./src/demo/server.js",
-    "release": "node scripts/release.js",
     "test": "jest --config jest.config.js --collectCoverage",
-    "bootstrap": "npx lerna bootstrap"
+    "lint": "tslint -c tslint.json 'src/**/*.tsx'"
   },
   "name": "magic-scroll",
   "version": "0.0.1",
