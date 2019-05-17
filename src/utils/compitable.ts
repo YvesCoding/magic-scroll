@@ -1,4 +1,8 @@
 export function isMobile() {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
   return 'ontouchstart' in window;
 }
 
@@ -34,6 +38,10 @@ export function getPrefix(global: any) {
  * Get a style with a browser prefix
  */
 export function getComplitableStyle(property, value) {
+  if (typeof window === 'undefined') {
+    return value;
+  }
+
   const compatibleValue = `-${getPrefix(window)}-${value}`;
   const testElm = document.createElement('div');
   testElm.style[property] = compatibleValue;
@@ -48,6 +56,9 @@ export function getComplitableStyle(property, value) {
 // Computed the bowser scrollbar gutter
 let scrollBarWidth;
 export function getNativeScrollbarSize() {
+  if (typeof window === 'undefined') {
+    return 0;
+  }
   if (scrollBarWidth !== undefined) {
     return scrollBarWidth;
   }
