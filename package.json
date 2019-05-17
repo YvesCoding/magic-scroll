@@ -63,7 +63,7 @@
     "lint": "tslint -c tslint.json 'src/**/*.tsx'"
   },
   "name": "magic-scroll",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "main": "dist/magic-scroll.js",
   "typings": "types/index.d.ts"
 }
