@@ -243,7 +243,7 @@ export function enhance<wrappedCompProps>(
     }
 
     render() {
-      const mergedProps = Object.assign({}, this.context, this.props);
+      const mergedProps = { ...{}, ...this.context, ...this.props };
 
       const {
         wrappedCompRef,
