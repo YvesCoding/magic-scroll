@@ -111,7 +111,7 @@ interface Props {
   /**
    * rail border
    */
-  railBorder: null;
+  railBorder?: null;
 
   /**
    * Whether to keep rail show or not, event content height is not overflow.
@@ -166,7 +166,7 @@ interface Props {
   /**
    * The scrolling speed while using mouse wheel.
    */
-  wheelSpeed: number;
+  wheelSpeed?: number;
 
   /** ---------- Customizable render function ----------------- */
 
@@ -176,7 +176,7 @@ interface Props {
   /**
    * handle for scrolling complete
    */
-  handleScrollComplete(): void;
+  handleScrollComplete?(): void;
 
   /** ---------- Customizable render function ----------------- */
 
