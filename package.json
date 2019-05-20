@@ -1,6 +1,6 @@
 {
   "name": "magic-scroll",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "author": "Yves Wang",
   "main": "dist/magic-scroll.js",
   "typings": "types/index.d.ts",
@@ -13,6 +13,14 @@
   },
   "license": "MIT",
   "repository": "https://github.com/YvesCoding/magic-scroll",
+  "files": [
+    "src",
+    "dist/*.js",
+    "dist/*.css",
+    "types/*.d.ts",
+    "README.md",
+    "LICENSE"
+  ],
   "dependencies": {
     "react": "^16.8.0",
     "react-dom": "^16.8.0"
