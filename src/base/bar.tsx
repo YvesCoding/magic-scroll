@@ -599,7 +599,7 @@ export default function createBar(
     ) : null;
 
   const hBar =
-    (vBarState.size || barProps.keepRailShow) && !hBarState.disable ? (
+    (hBarState.size || barProps.keepRailShow) && !hBarState.disable ? (
       <Bar
         {...{
           ...barProps,
