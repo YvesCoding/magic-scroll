@@ -15,6 +15,8 @@ import { enhance, GlobarBarOptionsContext } from '../base';
 interface Dest {
   x?: string | number;
   y?: string | number;
+  dx?: string | number;
+  dy?: string | number;
 }
 type EasingPatterns =
   | 'easeInQuad'
@@ -337,7 +339,7 @@ class MagicScrollNative extends React.PureComponent<
   scrollTo({ x, y }: Dest, speed?: number, easing?: EasingPatterns) {
     this._scrollTo(x, y, speed, easing);
   }
-  scrollBy({ x, y }: Dest, speed?: number, easing?: EasingPatterns) {
+  scrollBy({ dx, dy }: Dest, speed?: number, easing?: EasingPatterns) {
     const {
       scrollWidth,
       scrollHeight,
@@ -345,11 +347,11 @@ class MagicScrollNative extends React.PureComponent<
       clientHeight
     } = this._getDomByRef('panel') as Element;
     let { scrollLeft, scrollTop } = this._getPosition();
-    if (x) {
-      scrollLeft += normalizeSize(x, scrollWidth - clientWidth);
+    if (dx) {
+      scrollLeft += normalizeSize(dx, scrollWidth - clientWidth);
     }
-    if (y) {
-      scrollTop += normalizeSize(y, scrollHeight - clientHeight);
+    if (dy) {
+      scrollTop += normalizeSize(dy, scrollHeight - clientHeight);
     }
 
     this._scrollTo(scrollLeft, scrollTop, speed, easing);

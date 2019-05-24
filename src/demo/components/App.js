@@ -4,19 +4,17 @@ import ScrollBar from '../../../dist/magic-scroll';
 class Test extends React.PureComponent {
   render() {
     return (
-      <div style={{ height: '200px', width: '200px' }}>
+      <div style={{ height: '400px', width: '400px' }}>
         <ScrollBar
           ref="sss"
           scrollButtonEnable={true}
           onlyShowBarOnScroll={true}
-          keepRailShow={true}
           //  keepBarShow={true}
           railSize="20px"
-          barKeepShowTime={500}
-          sizeStrategy="foo"
+          barSize="20px"
           wheelSpeed={500}
         >
-          <div style={{ height: '1400px', width: '1400px' }} />
+          <div style={{ height: '1000px', width: '1000px' }} />
         </ScrollBar>
       </div>
     );
