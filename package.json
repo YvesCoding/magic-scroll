@@ -6,7 +6,7 @@
   "typings": "types/index.d.ts",
   "scripts": {
     "build": "cross-env BABEL_ENV=build node scripts/build.js",
-    "debug-build": "cross-env BABEL_ENV=build node scripts/auto-build.js",
+    "debug": "cross-env BABEL_ENV=build node scripts/auto-build.js",
     "demo": "cross-env NODE_ENV=development node ./src/demo/server.js",
     "test": "jest --config jest.config.js --collectCoverage",
     "lint": "tslint -c tslint.json 'src/**/*.tsx'"

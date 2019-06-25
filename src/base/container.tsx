@@ -1,6 +1,8 @@
 import * as React from 'react';
 import { normalizeClass } from '../utils/class';
 import { isMobile } from '../utils/compitable';
+import { getDom, eventOnOff } from '../utils/dom';
+import TouchManager from '../utils/touchManager';
 
 /* ---------------- Type Definations -------------------- */
 
@@ -22,8 +24,15 @@ interface Props {
 
 export default class BaseScroll extends React.PureComponent<Props> {
   static displayName = 'BasePScroll';
+
+  container: React.RefObject<any>;
+  touch: TouchManager;
+
   constructor(props) {
     super(props);
+
+    this.container = React.createRef();
+    this.touch = new TouchManager();
   }
 
   // Render
@@ -32,11 +41,10 @@ export default class BaseScroll extends React.PureComponent<Props> {
       renderContainer,
       className: cn,
       children,
-
+      style = {},
       onEnter,
       onLeave,
       onMove,
-      style = {},
       ...others
     } = this.props;
 
@@ -49,25 +57,11 @@ export default class BaseScroll extends React.PureComponent<Props> {
 
     let eventObj: any = {};
 
-    if (!isMobile()) {
-      eventObj = {
-        onMouseEnter: onEnter,
-        onMouseLeave: onLeave,
-        onMouseMove: onMove
-      };
-    } else {
-      eventObj = {
-        onTouchStart: onEnter,
-        onTouchEnd: onLeave,
-        onTouchMove: onMove
-      };
-    }
-
     if (renderContainer) {
       // React the cloned element
       return React.cloneElement(
         renderContainer({
-          ref: 'container',
+          ref: this.container,
           className,
           ...eventObj,
           ...others,
@@ -78,7 +72,7 @@ export default class BaseScroll extends React.PureComponent<Props> {
     } else {
       return (
         <div
-          ref="container"
+          ref={this.container}
           {...eventObj}
           className={className}
           {...others}
@@ -88,6 +82,46 @@ export default class BaseScroll extends React.PureComponent<Props> {
         </div>
       );
     }
+  }
+
+  _getDomByRef(refName) {
+    return getDom(this[refName].current);
+  }
+
+  componentDidMount() {
+    const container = this._getDomByRef('container');
+    const { onEnter, onLeave, onMove } = this.props;
+
+    eventOnOff(container, this.touch.touchObject.touchenter, onEnter, false);
+    eventOnOff(container, this.touch.touchObject.touchleave, onLeave, false);
+    eventOnOff(container, this.touch.touchObject.touchmove, onMove, false);
+  }
+
+  componentWillUnmount() {
+    const container = this._getDomByRef('container');
+    const { onEnter, onLeave, onMove } = this.props;
+
+    eventOnOff(
+      container,
+      this.touch.touchObject.touchenter,
+      onEnter,
+      false,
+      'off'
+    );
+    eventOnOff(
+      container,
+      this.touch.touchObject.touchleave,
+      onLeave,
+      false,
+      'off'
+    );
+    eventOnOff(
+      container,
+      this.touch.touchObject.touchmove,
+      onMove,
+      false,
+      'off'
+    );
   }
 
   /* ---------------- Methods -------------------- */

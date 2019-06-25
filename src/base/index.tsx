@@ -158,6 +158,14 @@ interface BarStates {
 
 interface States {
   barState: BarStates;
+  classHooks: {
+    barVisible: boolean;
+
+    vBarDragging: boolean;
+    hBarDragging: boolean;
+
+    mouseEnter: boolean;
+  };
 }
 
 const GlobarBarOptionsContext = React.createContext({});
@@ -174,7 +182,8 @@ export function enhance<wrappedCompProps>(
       detectResize: true,
       initialScrollY: false,
       initialScrollX: false,
-      style: {}
+      style: {},
+      barKeepShowTime: 300
     };
 
     static displayName = 'magic-scroll-base';
@@ -221,6 +230,14 @@ export function enhance<wrappedCompProps>(
             size: 0
           },
           opacity: 0
+        },
+        classHooks: {
+          barVisible: false,
+
+          vBarDragging: false,
+          hBarDragging: false,
+
+          mouseEnter: false
         }
       };
 
@@ -271,7 +288,7 @@ export function enhance<wrappedCompProps>(
         ...otherProps
       } = mergedProps;
 
-      const { barState } = this.state;
+      const { barState, classHooks } = this.state;
 
       const barProps = {
         railBg,
@@ -300,12 +317,36 @@ export function enhance<wrappedCompProps>(
         onRailClick: this._onRailClick
       };
 
+      const bars = createBar(
+        barProps,
+        barState.vBar,
+        barState.hBar,
+        barState.opacity
+      );
+
+      const [vBar, hBar] = bars;
+
+      const mergeClasses = [].concat(className);
+      for (const key in classHooks) {
+        if (classHooks[key]) {
+          mergeClasses.push(key);
+        }
+      }
+
+      if (vBar) {
+        mergeClasses.push('hasVBar');
+      }
+
+      if (hBar) {
+        mergeClasses.push('hasHBar');
+      }
+
       return (
         <>
           <Container
             ref={this.container}
             /** Styles and classNames */
-            className={className}
+            className={mergeClasses}
             style={{ ...style }}
             /** Render functions */
             renderContainer={renderContainer}
@@ -313,12 +354,7 @@ export function enhance<wrappedCompProps>(
             onLeave={this._onContainerLeave}
             onMove={this._onContainerMove}
           >
-            {createBar(
-              barProps,
-              barState.vBar,
-              barState.hBar,
-              barState.opacity
-            )}
+            {bars}
 
             <WrapperComponent
               {...otherProps}
@@ -331,7 +367,7 @@ export function enhance<wrappedCompProps>(
                 }
               }}
               onContainerRefresh={this._refresh.bind(this)}
-              onScrollComplete={this._scrollComptelte.bind(this)}
+              onScrollComplete={this._scrollComplete.bind(this)}
               onScroll={this._handleScroll.bind(this)}
             >
               {children}
@@ -391,6 +427,10 @@ export function enhance<wrappedCompProps>(
           barState: {
             ...prevState.barState,
             opacity: 1
+          },
+          classHooks: {
+            ...prevState.classHooks,
+            barVisible: true
           }
         };
       });
@@ -403,6 +443,10 @@ export function enhance<wrappedCompProps>(
             barState: {
               ...prevState.barState,
               opacity: 0
+            },
+            classHooks: {
+              ...prevState.classHooks,
+              barVisible: false
             }
           };
         });
@@ -481,10 +525,10 @@ export function enhance<wrappedCompProps>(
       );
     }
 
-    /** --------- react to events ----------------*/
+    /** --------- events ----------------*/
+
     _handleScroll() {
       this._updateBar();
-
       this._showHideBar();
     }
 
@@ -501,7 +545,7 @@ export function enhance<wrappedCompProps>(
     _onBarDrag(move, type: 'x' | 'y') {
       this.wrappedComp._onBarDrag(type, move);
     }
-    _onScrollButtonClick(move, type: 'x' | 'y', animate = true) {
+    _onScrollButtonClick(move, type: 'dx' | 'dy', animate = true) {
       this.wrappedComp.scrollBy(
         {
           [type]: move
@@ -510,20 +554,48 @@ export function enhance<wrappedCompProps>(
       );
     }
 
-    _scrollComptelte(...args) {
+    _scrollComplete(...args) {
       if (this.props.handleScrollComplete) {
         this.props.handleScrollComplete.apply(this.wrappedComp, args);
       }
     }
 
-    _setBarDrag(isDragging) {
+    _setBarDrag(isDragging, type: 'x' | 'y') {
       this._isBarDragging = isDragging;
-      this._hideBar();
+
+      this.setState((preState) => {
+        return {
+          ...preState,
+          ...{
+            classHooks: {
+              ...preState.classHooks,
+              vBarDragging: isDragging && type == 'y',
+              hBarDragging: isDragging && type == 'x'
+            }
+          }
+        };
+      });
+
+      if (!isDragging) {
+        this._hideBar();
+      }
     }
 
     _onContainerLeave() {
       this._isLeaveContainer = true;
       this._hideBar();
+
+      this.setState((preState) => {
+        return {
+          ...preState,
+          ...{
+            classHooks: {
+              ...preState.classHooks,
+              mouseEnter: false
+            }
+          }
+        };
+      });
     }
     _onContainerEnter() {
       this._isLeaveContainer = false;
@@ -531,6 +603,18 @@ export function enhance<wrappedCompProps>(
         this._updateBar();
         this._showBar();
       }
+
+      this.setState((preState) => {
+        return {
+          ...preState,
+          ...{
+            classHooks: {
+              ...preState.classHooks,
+              mouseEnter: true
+            }
+          }
+        };
+      });
     }
     _onContainerMove() {
       this._updateBar();

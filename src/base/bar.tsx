@@ -1,7 +1,8 @@
-import map from './bar-map';
+import map, { MapInterface } from './bar-map';
 import * as React from 'react';
 import { eventOnOff } from '../utils/dom';
-import { isMobile } from '../utils/compitable';
+import TouchManager from '../utils/touchManager';
+
 import { cached } from '../utils/object';
 import { normalizeClass } from '../utils/class';
 import { requestAnimationFrame } from '../vender/scroller/requestAnimationFrame';
@@ -21,9 +22,9 @@ export interface InternalProps {
 }
 
 export interface FunctionalProps {
-  setDrag(isDrag: boolean): void;
+  setDrag(isDrag: boolean, type: 'x' | 'y'): void;
   onBarDrag(move, type: 'x' | 'y');
-  onScrollButtonClick(move, type: 'x' | 'y', animate?: boolean);
+  onScrollButtonClick(move, type: 'dx' | 'dy', animate?: boolean);
   onRailClick(movedPercent, pos: 'y' | 'x'): void;
 }
 
@@ -171,8 +172,18 @@ export class Bar extends React.PureComponent<
     scrollButtonPressingStep: 30
   };
 
-  bar;
+  bar: MapInterface;
   startPosition: number;
+  touch: TouchManager;
+  events: {
+    bar: any;
+    rail: any;
+    scrollButton: {
+      start: any;
+      end: any;
+    };
+  };
+
   constructor(props) {
     super(props);
 
@@ -180,6 +191,15 @@ export class Bar extends React.PureComponent<
     this.bar = map[type];
     this._createDragEvent = this._createDragEvent.bind(this);
     this._handleRailClick = this._handleRailClick.bind(this);
+    this.touch = new TouchManager();
+    this.events = {
+      bar: null,
+      rail: null,
+      scrollButton: {
+        start: null,
+        end: null
+      }
+    };
   }
   render() {
     const {
@@ -207,7 +227,6 @@ export class Bar extends React.PureComponent<
     } = this.props;
 
     const barType = this._getType();
-    const BAR_MAP = map[barType];
     const classNameOfType = '__is-' + barType;
 
     // Rail props
@@ -221,10 +240,10 @@ export class Bar extends React.PureComponent<
       borderRadius:
         (railBorderRadius !== 'auto' && railBorderRadius) || barSize,
       // backgroundColor: 'blue',
-      [BAR_MAP.opsSize]: railSize,
-      [BAR_MAP.posName]: 0,
-      [BAR_MAP.opposName]: endPos,
-      [BAR_MAP.sidePosName]: 0,
+      [this.bar.opsSize]: railSize,
+      [this.bar.posName]: 0,
+      [this.bar.opposName]: endPos,
+      [this.bar.sidePosName]: 0,
       background: railBackgroundColor,
       border: railBorder
     };
@@ -234,9 +253,9 @@ export class Bar extends React.PureComponent<
     const barWrapStyle: React.CSSProperties = {
       position: 'absolute',
       borderRadius: (barBorderRadius !== 'auto' && barBorderRadius) || barSize,
-      [BAR_MAP.posName]: buttonSize,
-      [BAR_MAP.opsSize]: barSize,
-      [BAR_MAP.opposName]: buttonSize
+      [this.bar.posName]: buttonSize,
+      [this.bar.opsSize]: barSize,
+      [this.bar.opposName]: buttonSize
     };
 
     // Bar props
@@ -249,10 +268,10 @@ export class Bar extends React.PureComponent<
       borderRadius: 'inherit',
 
       backgroundColor: barBg,
-      [BAR_MAP.size]: this._getBarSize() + '%',
+      [this.bar.size]: this._getBarSize() + '%',
       opacity: opacity == 0 ? 0 : barOpacity,
-      [BAR_MAP.opsSize]: barSize,
-      transform: `translate${BAR_MAP.axis}(${this._getBarPos()}%)`
+      [this.bar.opsSize]: barSize,
+      transform: `translate${this.bar.axis.toUpperCase()}(${this._getBarPos()}%)`
     };
 
     if (barType == 'vertical') {
@@ -272,7 +291,7 @@ export class Bar extends React.PureComponent<
         className={`__rail ${classNameOfType} ${railCls}`}
         style={railStyle}
       >
-        {createScrollbarButton(this, 'start')}
+        {this._createScrollbarButton('start')}
         {hideBar ? null : (
           <div
             ref="barWrap"
@@ -288,13 +307,18 @@ export class Bar extends React.PureComponent<
             />
           </div>
         )}
-        {createScrollbarButton(this, 'end')}
+        {this._createScrollbarButton('end')}
       </div>
     );
   }
   componentDidMount() {
-    this._addAllListeners();
+    this._setAllListeners();
   }
+
+  componentWillUnmount() {
+    this._setAllListeners('off');
+  }
+
   // Internal methods
   /**
    * Create a drag event according to current platform
@@ -312,18 +336,19 @@ export class Bar extends React.PureComponent<
   _getBarRatio() {
     return (100 - this._getBarSize()) / (100 - this.props.barsState.size);
   }
-  _createDragEvent(type: 'touch' | 'mouse'): any {
+  _createDragEvent(touch: TouchManager): any {
     const bar = this.refs.bar as Element;
     const rail = this.refs.barWrap as Element;
-    const moveEvent = type == 'touch' ? 'touchmove' : 'mousemove';
-    const endEvent = type == 'touch' ? 'touchend' : 'mouseup';
+    const moveEvent = touch.touchObject.touchmove;
+    const endEvent = touch.touchObject.touchend;
+    const barType = this.bar.axis.toLowerCase() as 'x' | 'y';
 
     const dragStart = (e) => {
       e.stopImmediatePropagation();
       e.preventDefault();
       document.onselectstart = () => false;
 
-      const event = type == 'touch' ? e.touches[0] : e;
+      const event = touch.getEventObject(e)[0];
       const dragPos = event[this.bar.client];
 
       this.startPosition =
@@ -332,17 +357,17 @@ export class Bar extends React.PureComponent<
       eventOnOff(document, moveEvent, onDragging);
       eventOnOff(document, endEvent, dragEnd);
 
-      this.props.setDrag(true);
+      this.props.setDrag(true, barType);
     };
     const onDragging = (e) => {
-      const event = type == 'touch' ? e.touches[0] : e;
+      const event = touch.getEventObject(e)[0];
       const dragPos = event[this.bar.client];
       const delta =
         (dragPos - rail.getBoundingClientRect()[this.bar.posName]) /
         this._getBarRatio();
       const percent = (delta - this.startPosition) / rail[this.bar.offset];
 
-      this.props.onBarDrag(percent, this.bar.axis.toLowerCase());
+      this.props.onBarDrag(percent, barType);
     };
     const dragEnd = () => {
       document.onselectstart = null;
@@ -351,38 +376,250 @@ export class Bar extends React.PureComponent<
       eventOnOff(document, moveEvent, onDragging, false, 'off');
       eventOnOff(document, endEvent, dragEnd, false, 'off');
 
-      this.props.setDrag(false);
+      this.props.setDrag(false, barType);
     };
 
     return dragStart;
   }
-  _addAllListeners() {
+  _createScrollbarButton(type) {
+    if (!this.props.scrollButtonEnable) {
+      return null;
+    }
+
+    const size = this.props.railSize;
+    const borderColor = this.props.scrollButtonBg;
+    const wrapperProps = {
+      className: normalizeClass(
+        '__bar-button',
+        '__bar-button-is-' + this._getType() + '-' + type
+      ),
+      style: {
+        position: 'absolute' as 'absolute',
+        cursor: 'pointer',
+        [map[this._getType()].scrollButton[type]]: 0,
+        width: size,
+        height: size
+      },
+      ref: type
+    };
+    const innerStyle: React.CSSProperties = {
+      border: `calc(${size} / 2.5) solid transparent`,
+      width: '0',
+      height: '0',
+      margin: 'auto',
+      position: 'absolute',
+      top: '0',
+      bottom: '0',
+      right: '0',
+      left: '0'
+    };
+    const innerProps: any = {
+      className: '__bar-button-inner',
+      style: innerStyle
+    };
+
+    if (!this.props.horizontal) {
+      if (type == 'start') {
+        innerProps.style.borderBottomColor = borderColor;
+        innerProps.style.transform = 'translateY(-25%)';
+      } else {
+        innerProps.style.borderTopColor = borderColor;
+        innerProps.style.transform = 'translateY(25%)';
+      }
+    } else {
+      if (type == 'start') {
+        innerProps.style.borderRightColor = borderColor;
+        innerProps.style.transform = 'translateX(-25%)';
+      } else {
+        innerProps.style.borderLeftColor = borderColor;
+        innerProps.style.transform = 'translateX(25%)';
+      }
+    }
+
+    return (
+      <div {...wrapperProps}>
+        <div {...innerProps} ref={type} />
+      </div>
+    );
+  }
+
+  _createScrollButtonEvent(type: 'start' | 'end', touch: TouchManager) {
+    const endEventName = touch.touchObject.touchend;
+    const { scrollButtonClickStep, scrollButtonPressingStep } = this.props;
+    const stepWithDirection =
+      type == 'start' ? -scrollButtonClickStep : scrollButtonClickStep;
+    const mousedownStepWithDirection =
+      type == 'start' ? -scrollButtonPressingStep : scrollButtonPressingStep;
+    const ref = requestAnimationFrame(window);
+
+    let isMouseDown = false;
+    let isMouseout = true;
+    let timeoutId;
+
+    const start = (e) => {
+      /* istanbul ignore if */
+
+      if (3 == e.which) {
+        return;
+      }
+
+      e.stopImmediatePropagation();
+      e.preventDefault();
+
+      isMouseout = false;
+
+      this.props.onScrollButtonClick(stepWithDirection, ('d' +
+        this.bar.axis) as 'dx' | 'dy');
+
+      eventOnOff(document, endEventName, endPress, false);
+
+      if (/mouse/.test(touch.touchObject.touchstart)) {
+        const elm = this.refs[type] as Element;
+        eventOnOff(elm, 'mouseenter', enter, false);
+        eventOnOff(elm, 'mouseleave', leave, false);
+      }
+
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        isMouseDown = true;
+        ref(pressingButton, window);
+      }, 500);
+    };
+
+    const pressingButton = () => {
+      if (isMouseDown && !isMouseout) {
+        this.props.onScrollButtonClick(
+          mousedownStepWithDirection,
+          ('d' + this.bar.axis) as 'dx' | 'dy',
+          false
+        );
+        ref(pressingButton, window);
+      }
+    };
+
+    const endPress = () => {
+      clearTimeout(timeoutId);
+      isMouseDown = false;
+      eventOnOff(document, endEventName, endPress, false, 'off');
+      if (/mouse/.test(touch.touchObject.touchstart)) {
+        const elm = this.refs[type] as Element;
+        eventOnOff(elm, 'mouseenter', enter, false, 'off');
+        eventOnOff(elm, 'mouseleave', leave, false, 'off');
+      }
+    };
+
+    const enter = () => {
+      isMouseout = false;
+      pressingButton();
+    };
+
+    const leave = () => {
+      isMouseout = true;
+    };
+
+    return start;
+  }
+
+  _setAllListeners(type?: 'on' | 'off') {
     if (this.refs.bar) {
-      this._addBarListener();
+      this._setBarListener(type);
     }
     if (this.refs.barWrap) {
-      this._addRailListener();
+      this._setRailListener(type);
+    }
+
+    // add evemts for scrollButton
+    this._setScrollButtonListener('start', type);
+    this._setScrollButtonListener('end', type);
+
+    if (type == 'off') {
+      this.events = {
+        bar: null,
+        rail: null,
+        scrollButton: {
+          start: null,
+          end: null
+        }
+      };
     }
   }
-  _addBarListener() {
+
+  _setBarListener(type?: 'on' | 'off') {
+    let barEvent = this.events.bar;
+
+    if (barEvent && type == 'on') {
+      return;
+    }
+
+    if (!barEvent && type == 'off') {
+      return;
+    }
+
     // Not registry listener on props because there is a passive
     // issue on `touchstart` event, see:
     // https://github.com/facebook/react/issues/9809#issuecomment-414072263
     const bar = this.refs.bar as Element;
-    const type = isMobile() ? 'touchstart' : 'mousedown';
-    let event: any = isMobile()
-      ? this._createDragEvent('touch')
-      : this._createDragEvent('mouse');
+    this.events.bar = barEvent = this._createDragEvent(this.touch);
 
-    eventOnOff(bar, type, event, { passive: false });
+    eventOnOff(
+      bar,
+      this.touch.touchObject.touchstart,
+      barEvent,
+      {
+        passive: false
+      },
+      type
+    );
   }
-  _addRailListener() {
+  _setRailListener(type?: 'on' | 'off') {
+    let railEvent = this.events.rail;
+
+    if (railEvent && type == 'on') {
+      return;
+    }
+
+    if (!railEvent && type == 'off') {
+      return;
+    }
+
     const rail = this.refs.barWrap as Element;
-    const type = isMobile() ? 'touchstart' : 'mousedown';
-
-    eventOnOff(rail, type, (e) => this._handleRailClick(e, type));
+    this.events.rail = railEvent = this.touch.touchObject.touchstart;
+    eventOnOff(
+      rail,
+      railEvent,
+      (e) => this._handleRailClick(e, this.touch),
+      false,
+      type
+    );
   }
-  _handleRailClick(e, type: 'touchstart' | 'mousedown') {
+
+  _setScrollButtonListener(position, type?: 'on' | 'off') {
+    let scrollButtonEvent = this.events.scrollButton[type];
+    let dom = this.refs[position] as Element;
+    if (!dom) {
+      return;
+    }
+
+    if (scrollButtonEvent && type == 'on') {
+      return;
+    }
+
+    if (!scrollButtonEvent && type == 'off') {
+      return;
+    }
+
+    this.events.scrollButton[type] = scrollButtonEvent = this.touch.touchObject
+      .touchstart;
+    eventOnOff(
+      dom,
+      scrollButtonEvent,
+      this._createScrollButtonEvent(position, this.touch),
+      false,
+      type
+    );
+  }
+
+  _handleRailClick(e, touch: TouchManager) {
     // Scroll to the place of rail where click event triggers.
     const { client, offset, posName, axis } = this.bar;
     const bar = this.refs.bar;
@@ -392,7 +629,7 @@ export class Bar extends React.PureComponent<
     }
 
     const barOffset = bar[offset];
-    const event = type == 'touchstart' ? e.touches[0] : e;
+    const event = touch.getEventObject(e)[0];
 
     const percent =
       (event[client] -
@@ -400,177 +637,12 @@ export class Bar extends React.PureComponent<
         barOffset / 2) /
       (e.currentTarget[offset] - barOffset);
 
-    this.props.onRailClick(percent * 100 + '%', axis.toLowerCase() as
-      | 'x'
-      | 'y');
+    this.props.onRailClick(percent * 100 + '%', axis);
   }
 
   _getType() {
     return this.props.horizontal ? 'horizontal' : 'vertical';
   }
-}
-
-/**
- *
- * @param context bar instance
- * @param type bar type (vertical | horizontal)
- * @param env mouse means component is running on PC , or running on moblie
- * phone.
- */
-function createScrollButtonEvent(
-  context: Bar,
-  type: 'start' | 'end',
-  env: 'mouse' | 'touch' = 'mouse'
-) {
-  const endEventName = env == 'mouse' ? 'mouseup' : 'touchend';
-  const { scrollButtonClickStep, scrollButtonPressingStep } = context.props;
-  const stepWithDirection =
-    type == 'start' ? -scrollButtonClickStep : scrollButtonClickStep;
-  const mousedownStepWithDirection =
-    type == 'start' ? -scrollButtonPressingStep : scrollButtonPressingStep;
-  const ref = requestAnimationFrame(window);
-
-  let isMouseDown = false;
-  let isMouseout = true;
-  let timeoutId;
-
-  const start = (e) => {
-    /* istanbul ignore if */
-
-    if (3 == e.which) {
-      return;
-    }
-
-    e.nativeEvent.stopImmediatePropagation();
-    e.preventDefault();
-
-    isMouseout = false;
-
-    context.props.onScrollButtonClick(
-      stepWithDirection,
-      context.bar.axis.toLowerCase()
-    );
-
-    eventOnOff(document, endEventName, endPress, false);
-
-    if (env == 'mouse') {
-      const elm = context.refs[type] as Element;
-      eventOnOff(elm, 'mouseenter', enter, false);
-      eventOnOff(elm, 'mouseleave', leave, false);
-    }
-
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => {
-      isMouseDown = true;
-      ref(pressingButton, window);
-    }, 500);
-  };
-
-  const pressingButton = () => {
-    if (isMouseDown && !isMouseout) {
-      context.props.onScrollButtonClick(
-        mousedownStepWithDirection,
-        context.bar.axis.toLowerCase(),
-        false
-      );
-      ref(pressingButton, window);
-    }
-  };
-
-  const endPress = () => {
-    clearTimeout(timeoutId);
-    isMouseDown = false;
-    eventOnOff(document, endEventName, endPress, false, 'off');
-    if (env == 'mouse') {
-      const elm = context.refs[type] as Element;
-      eventOnOff(elm, 'mouseenter', enter, false, 'off');
-      eventOnOff(elm, 'mouseleave', leave, false, 'off');
-    }
-  };
-
-  const enter = () => {
-    isMouseout = false;
-    pressingButton();
-  };
-
-  const leave = () => {
-    isMouseout = true;
-  };
-
-  return start;
-}
-
-/**
- * create two scroll butons on one rail.
- * @param context bar instance
- * @param type bar type (vertical | horizontal)
- */
-function createScrollbarButton(context: Bar, type) {
-  if (!context.props.scrollButtonEnable) {
-    return null;
-  }
-
-  const size = context.props.railSize;
-  const borderColor = context.props.scrollButtonBg;
-  const wrapperProps = {
-    className: normalizeClass(
-      '__bar-button',
-      '__bar-button-is-' + context._getType() + '-' + type
-    ),
-    style: {
-      position: 'absolute' as 'absolute',
-      cursor: 'pointer',
-      [map[context._getType()].scrollButton[type]]: 0,
-      width: size,
-      height: size
-    },
-    ref: type
-  };
-  const innerStyle: React.CSSProperties = {
-    border: `calc(${size} / 2.5) solid transparent`,
-    width: '0',
-    height: '0',
-    margin: 'auto',
-    position: 'absolute',
-    top: '0',
-    bottom: '0',
-    right: '0',
-    left: '0'
-  };
-  const innerProps: any = {
-    className: '__bar-button-inner',
-    style: innerStyle
-  };
-
-  if (!context.props.horizontal) {
-    if (type == 'start') {
-      innerProps.style.borderBottomColor = borderColor;
-      innerProps.style.transform = 'translateY(-25%)';
-    } else {
-      innerProps.style.borderTopColor = borderColor;
-      innerProps.style.transform = 'translateY(25%)';
-    }
-  } else {
-    if (type == 'start') {
-      innerProps.style.borderRightColor = borderColor;
-      innerProps.style.transform = 'translateX(-25%)';
-    } else {
-      innerProps.style.borderLeftColor = borderColor;
-      innerProps.style.transform = 'translateX(25%)';
-    }
-  }
-
-  if (isMobile()) {
-    innerProps.onTouchstart = createScrollButtonEvent(context, type, 'touch');
-  } else {
-    innerProps.onMouseDown = createScrollButtonEvent(context, type);
-  }
-
-  return (
-    <div {...wrapperProps}>
-      <div {...innerProps} ref={type} />
-    </div>
-  );
 }
 
 export default function createBar(

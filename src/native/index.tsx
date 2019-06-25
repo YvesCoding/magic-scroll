@@ -254,43 +254,52 @@ class MagicScrollNative extends React.PureComponent<
       y = normalizeSize(y, scrollHeight - clientHeight);
     }
 
-    // hadnle for scroll complete
-    const scrollingComplete = this._scrollComptelte.bind(this);
-    // options
-    const { easing: optionEasing, speed: optionSpeed } = this.props;
-    const easingMethod = createEasingFunction(
-      easing || optionEasing,
-      easingPattern
-    );
-
-    if (x - scrollLeft) {
-      // move x
-      this.scrollX.startScroll(
-        scrollLeft,
-        x,
-        speed || optionSpeed,
-        (dx) => {
-          panelElm.scrollLeft = dx;
-        },
-        scrollingComplete,
-        undefined,
-        easingMethod
-      );
+    if (typeof speed == 'undefined') {
+      speed = this.props.speed;
     }
 
-    if (y - scrollTop) {
-      // move Y
-      this.scrollY.startScroll(
-        scrollTop,
-        y,
-        speed,
-        (dy) => {
-          panelElm.scrollTop = dy;
-        },
-        scrollingComplete,
-        undefined,
-        easingMethod
+    if (speed) {
+      // hadnle for scroll complete
+      const scrollingComplete = this._scrollComplete.bind(this);
+      // options
+      const { easing: optionEasing, speed: optionSpeed } = this.props;
+      const easingMethod = createEasingFunction(
+        easing || optionEasing,
+        easingPattern
       );
+
+      if (x - scrollLeft) {
+        // move x
+        this.scrollX.startScroll(
+          scrollLeft,
+          x,
+          speed || optionSpeed,
+          (dx) => {
+            panelElm.scrollLeft = dx;
+          },
+          scrollingComplete,
+          undefined,
+          easingMethod
+        );
+      }
+
+      if (y - scrollTop) {
+        // move Y
+        this.scrollY.startScroll(
+          scrollTop,
+          y,
+          speed,
+          (dy) => {
+            panelElm.scrollTop = dy;
+          },
+          scrollingComplete,
+          undefined,
+          easingMethod
+        );
+      }
+    } else {
+      panelElm.scrollTop = y;
+      panelElm.scrollLeft = x;
     }
   }
   _refresh() {
@@ -299,18 +308,60 @@ class MagicScrollNative extends React.PureComponent<
   }
 
   /** --------- react to events ----------------*/
-  _handleScroll() {
+  _invokeEventHandle(eventHandleName, event = null) {
+    let {
+      scrollLeft,
+      scrollTop,
+      scrollHeight,
+      scrollWidth,
+      clientHeight,
+      clientWidth
+    } = this._getPanelStatus();
+
+    const vertical: any = {
+      type: 'vertical'
+    };
+    const horizontal: any = {
+      type: 'horizontal'
+    };
+
+    vertical.process = Math.min(
+      scrollTop / (scrollHeight - clientHeight || 1),
+      1
+    );
+    horizontal.process = Math.min(
+      scrollLeft / (scrollWidth - clientWidth || 1),
+      1
+    );
+
+    vertical.scrolledDistance = scrollTop;
+    horizontal.scrolledDistance = scrollLeft;
+
+    const eventHandle = this.props[eventHandleName];
+    if (eventHandle) {
+      eventHandle({
+        name: eventHandleName,
+        event,
+        vertical,
+        horizontal
+      });
+    }
+  }
+
+  _handleScroll(e) {
     this.props.onScroll();
+
+    this._invokeEventHandle('handleScroll', e);
   }
 
   _handleResize() {
     this.refresh();
+
+    this._invokeEventHandle('hanldeResize');
   }
 
-  _scrollComptelte() {
-    if (this.props.onScrollComplete) {
-      this.props.onScrollComplete();
-    }
+  _scrollComplete() {
+    this._invokeEventHandle('hanldeScrollComplete');
   }
 
   _onBarDrag(direction: 'x' | 'y', percent) {
@@ -326,11 +377,23 @@ class MagicScrollNative extends React.PureComponent<
     );
   }
 
-  _getPosition() {
-    const { scrollTop, scrollLeft } = this._getDomByRef('panel') as Element;
+  _getPanelStatus() {
+    const {
+      scrollTop,
+      scrollLeft,
+      scrollHeight,
+      scrollWidth,
+      clientHeight,
+      clientWidth
+    } = this._getDomByRef('panel') as Element;
+
     return {
       scrollTop,
-      scrollLeft
+      scrollLeft,
+      scrollHeight,
+      scrollWidth,
+      clientHeight,
+      clientWidth
     };
   }
 
@@ -346,7 +409,7 @@ class MagicScrollNative extends React.PureComponent<
       clientWidth,
       clientHeight
     } = this._getDomByRef('panel') as Element;
-    let { scrollLeft, scrollTop } = this._getPosition();
+    let { scrollLeft, scrollTop } = this._getPanelStatus();
     if (dx) {
       scrollLeft += normalizeSize(dx, scrollWidth - clientWidth);
     }
@@ -360,6 +423,15 @@ class MagicScrollNative extends React.PureComponent<
     this._refresh();
     // Call HOC's refresh method
     this.props.onContainerRefresh();
+  }
+
+  getPosition() {
+    const { scrollTop, scrollLeft } = this._getPanelStatus();
+
+    return {
+      scrollTop,
+      scrollLeft
+    };
   }
 }
 
