@@ -315,6 +315,34 @@ function normalizeSize(size, amount) {
         }
     return number;
 }
+// Hide the ios native scrollbar.
+function createHideBarStyle() {
+    /* istanbul ignore next */
+    {
+        const cssText = `.__hidebar::-webkit-scrollbar {
+      width: 0;
+      height: 0;
+    }`;
+        createStyle('magic-scroll-hide-bar', cssText);
+    }
+}
+function createStyle(styleId, cssText) {
+    /* istanbul ignore if */
+    if (typeof window === 'undefined' || document.getElementById(styleId)) {
+        return;
+    }
+    const head = document.head || document.getElementsByTagName('head')[0];
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.type = 'text/css';
+    /* istanbul ignore if */
+    if (style.styleSheet) {
+        style.styleSheet.cssText = cssText;
+    } else {
+        style.appendChild(document.createTextNode(cssText));
+    }
+    head.appendChild(style);
+}
 
 /**
  * It is used to communication between HOC and wrapped component.
@@ -424,6 +452,14 @@ class Panel extends React.PureComponent {
 }
 Panel.displayName = 'BasePanel';
 
+const isIos = () => {
+    /* istanbul ignore if */
+    if (typeof window === 'undefined') {
+        return false;
+    }
+    let u = navigator.userAgent;
+    return !!u.match(/\(i[^;]+;( U;)? CPU.+Mac OS X/);
+};
 function getPrefix(global) {
     let docStyle = document.documentElement.style;
     let engine;
@@ -519,7 +555,11 @@ class NativePanel extends React.PureComponent {
         // Add gutter for hiding native bar
         let gutter = getNativeScrollbarSize();
         if (!gutter) {
+            createHideBarStyle();
             className.push('__hidebar');
+            if (isIos()) {
+                style['-webkit-overflow-scrolling'] = 'touch';
+            }
         } else {
             if (barsState.vBar.size) {
                 style[`margin${capitalize(barPos)}`] = `-${gutter}px`;

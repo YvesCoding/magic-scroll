@@ -6,6 +6,14 @@ export function isMobile() {
   return 'ontouchstart' in window;
 }
 
+export const isIos = () => {
+  /* istanbul ignore if */
+  if (typeof window === 'undefined') { return false; }
+
+  let u = navigator.userAgent;
+  return !!u.match(/\(i[^;]+;( U;)? CPU.+Mac OS X/);
+};
+
 export function getPrefix(global: any) {
   let docStyle = document.documentElement.style;
   let engine;

@@ -49,3 +49,44 @@ export function normalizeSize(size: number | string, amount: number) {
   }
   return number;
 }
+
+// Hide the ios native scrollbar.
+export function createHideBarStyle() {
+  /* istanbul ignore next */
+  {
+    const cssText = `.__hidebar::-webkit-scrollbar {
+      width: 0;
+      height: 0;
+    }`;
+
+    createStyle('magic-scroll-hide-bar', cssText);
+  }
+}
+
+declare global {
+  interface HTMLStyleElement {
+    styleSheet: any;
+  }
+}
+
+export function createStyle(styleId, cssText) {
+  /* istanbul ignore if */
+  if (typeof window === 'undefined' || document.getElementById(styleId)) {
+    return;
+  }
+
+  const head = document.head || document.getElementsByTagName('head')[0];
+  const style = document.createElement('style');
+
+  style.id = styleId;
+  style.type = 'text/css';
+
+  /* istanbul ignore if */
+  if (style.styleSheet) {
+    style.styleSheet.cssText = cssText;
+  } else {
+    style.appendChild(document.createTextNode(cssText));
+  }
+
+  head.appendChild(style);
+}

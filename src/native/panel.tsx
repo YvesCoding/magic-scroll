@@ -3,10 +3,11 @@ import BasePanel from '../base/panel';
 import { BarState } from '../base/Bar';
 import {
   getNativeScrollbarSize,
-  getComplitableStyle
+  getComplitableStyle,
+  isIos
 } from '../utils/compitable';
 import detectResize from '../vender/resize-detector';
-import { getDom, eventOnOff } from '../utils/dom';
+import { getDom, eventOnOff, createHideBarStyle } from '../utils/dom';
 import { Subscription } from '../utils/subscription';
 import { capitalize } from '../utils/object';
 
@@ -77,7 +78,11 @@ export default class NativePanel extends React.PureComponent<Props> {
     let gutter = getNativeScrollbarSize();
 
     if (!gutter) {
+      createHideBarStyle();
       className.push('__hidebar');
+      if (isIos()) {
+        style['-webkit-overflow-scrolling'] = 'touch';
+      }
     } else {
       if (barsState.vBar.size) {
         style[`margin${capitalize(barPos)}`] = `-${gutter}px`;
