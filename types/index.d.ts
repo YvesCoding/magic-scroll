@@ -18,6 +18,25 @@ interface Dest {
   y?: string | number;
 }
 
+interface EventHandleScrollInfo {
+  vertical: {
+    type: 'vertical';
+    /**
+     * process: [0 , 1]
+     */
+    process: number;
+    scrolledDistance: number;
+  };
+  horizontal: {
+    type: 'horizontal';
+    /**
+     * process: [0 , 1]
+     */
+    process: number;
+    scrolledDistance: number;
+  };
+}
+
 interface Props {
   /** Inline style */
   style?: React.CSSProperties;
@@ -181,6 +200,11 @@ interface Props {
   /** ---------- Customizable render function ----------------- */
 
   renderContainer?(props?: any): React.ReactElement<any>;
+
+  // all kinds of event handlers..
+  hanldeResize?(info?: EventHandleScrollInfo): void;
+  handleScroll?(info?: EventHandleScrollInfo, event?: Event): void;
+  hanldeScrollComplete?(info?: EventHandleScrollInfo): void;
 }
 
 declare class MagicScroll extends React.PureComponent<Props> {
