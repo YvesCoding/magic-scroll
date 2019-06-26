@@ -303,12 +303,21 @@ class MagicScrollNative extends React.PureComponent<
     }
   }
   _refresh() {
+    if (!this.panel.current) {
+      return;
+    }
+
     // refresh panel
     this.panel.current._refresh();
   }
 
   /** --------- react to events ----------------*/
   _invokeEventHandle(eventHandleName, event = null) {
+    const panelDomInfo = this._getPanelStatus();
+    if (!panelDomInfo) {
+      return;
+    }
+
     let {
       scrollLeft,
       scrollTop,
@@ -316,7 +325,7 @@ class MagicScrollNative extends React.PureComponent<
       scrollWidth,
       clientHeight,
       clientWidth
-    } = this._getPanelStatus();
+    } = panelDomInfo;
 
     const vertical: any = {
       type: 'vertical'
@@ -356,7 +365,6 @@ class MagicScrollNative extends React.PureComponent<
 
   _handleResize() {
     this.refresh();
-
     this._invokeEventHandle('hanldeResize');
   }
 
@@ -378,6 +386,11 @@ class MagicScrollNative extends React.PureComponent<
   }
 
   _getPanelStatus() {
+    const panelElm = this._getDomByRef('panel');
+    if (!panelElm) {
+      return;
+    }
+
     const {
       scrollTop,
       scrollLeft,
@@ -385,7 +398,7 @@ class MagicScrollNative extends React.PureComponent<
       scrollWidth,
       clientHeight,
       clientWidth
-    } = this._getDomByRef('panel') as Element;
+    } = panelElm as Element;
 
     return {
       scrollTop,

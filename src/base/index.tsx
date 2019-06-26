@@ -207,6 +207,9 @@ export function enhance<wrappedCompProps>(
 
     wrappedComp: any;
 
+    _hideBar: any;
+    _onContainerMove: any;
+
     /* --------------------- Lifecycle Methods ------------------------ */
     constructor(props) {
       super(props);
@@ -247,16 +250,44 @@ export function enhance<wrappedCompProps>(
       this._onRailClick = this._onRailClick.bind(this);
       this._setBarDrag = this._setBarDrag.bind(this);
       this._onContainerEnter = this._onContainerEnter.bind(this);
-      this._onContainerMove = this._onContainerMove.bind(this);
       this._onContainerLeave = this._onContainerLeave.bind(this);
       this._onBarDrag = this._onBarDrag.bind(this);
       this._onScrollButtonClick = this._onScrollButtonClick.bind(this);
 
-      // // Debounce and throttle  methods
-      this._hideBar = debounce(this._hideBar, this.props.barKeepShowTime);
-      this._onContainerMove = throttle(this._onContainerMove, 500);
-
       this.subscription = new Subscription();
+
+      // // Debounce and throttle  methods
+      this._hideBar = debounce(() => {
+        // Hide bar
+        if (this._canHideBar()) {
+          this.setState((prevState) => {
+            return {
+              barState: {
+                ...prevState.barState,
+                opacity: 0
+              },
+              classHooks: {
+                ...prevState.classHooks,
+                barVisible: false
+              }
+            };
+          });
+        }
+      }, this.props.barKeepShowTime);
+
+      this._onContainerMove = throttle(() => {
+        this._updateBar();
+        if (!this.props.onlyShowBarOnScroll && !this._isLeaveContainer) {
+          this._showBar();
+        }
+      }, 500);
+
+      this.subscription.subscribe(MagicScrollBase.unmount_key, () => {
+        this._hideBar.cancel();
+      });
+      this.subscription.subscribe(MagicScrollBase.unmount_key, () => {
+        this._onContainerMove.cancel();
+      });
     }
 
     render() {
@@ -408,6 +439,10 @@ export function enhance<wrappedCompProps>(
     }
 
     _updateBar() {
+      if (!this.wrappedComp) {
+        return;
+      }
+
       const barState = this.wrappedComp._getBarState();
       if (barState) {
         this.setState((pre) => {
@@ -435,23 +470,6 @@ export function enhance<wrappedCompProps>(
         };
       });
     }
-    _hideBar() {
-      // Hide bar
-      if (this._canHideBar()) {
-        this.setState((prevState) => {
-          return {
-            barState: {
-              ...prevState.barState,
-              opacity: 0
-            },
-            classHooks: {
-              ...prevState.classHooks,
-              barVisible: false
-            }
-          };
-        });
-      }
-    }
     _showHideBar() {
       this._showBar();
       this._hideBar();
@@ -459,7 +477,10 @@ export function enhance<wrappedCompProps>(
     _refresh() {
       // set container size strategy
       const strat = this.props.sizeStrategy;
-      this._setContainerSizeStrategy(strat);
+      const container = this._setContainerSizeStrategy(strat);
+      if (!container) {
+        return;
+      }
 
       this._updateBar();
       this._showHideBar();
@@ -470,6 +491,9 @@ export function enhance<wrappedCompProps>(
      */
     _setContainerSizeStrategy(strat) {
       const container = this._getDomByRef('container');
+      if (!container) {
+        return;
+      }
 
       if (strat == 'percent') {
         this._setPercentSize(container);
@@ -483,6 +507,8 @@ export function enhance<wrappedCompProps>(
         // fallback to percent.
         this._setContainerSizeStrategy('percent');
       }
+
+      return container;
     }
     _detectContainerResize() {
       if (!this._destroyContainerResize) {
@@ -514,6 +540,10 @@ export function enhance<wrappedCompProps>(
       setConainerSize(); // fire an once!;
     }
     _triggerInitialScroll() {
+      if (!this.wrappedComp) {
+        return;
+      }
+
       const { initialScrollX: x, initialScrollY: y } = this.props;
       this.wrappedComp.scrollTo({ x, y });
     }
@@ -537,12 +567,20 @@ export function enhance<wrappedCompProps>(
     }
 
     _onRailClick(percent, pos) {
+      if (!this.wrappedComp) {
+        return;
+      }
+
       this.wrappedComp.scrollTo({
         [pos]: percent
       });
     }
 
     _onBarDrag(move, type: 'x' | 'y') {
+      if (!this.wrappedComp) {
+        return;
+      }
+
       this.wrappedComp._onBarDrag(type, move);
     }
     _onScrollButtonClick(move, type: 'dx' | 'dy', animate = true) {
@@ -555,6 +593,10 @@ export function enhance<wrappedCompProps>(
     }
 
     _scrollComplete(...args) {
+      if (!this.wrappedComp) {
+        return;
+      }
+
       if (this.props.handleScrollComplete) {
         this.props.handleScrollComplete.apply(this.wrappedComp, args);
       }
@@ -615,12 +657,6 @@ export function enhance<wrappedCompProps>(
           }
         };
       });
-    }
-    _onContainerMove() {
-      this._updateBar();
-      if (!this.props.onlyShowBarOnScroll && !this._isLeaveContainer) {
-        this._showBar();
-      }
     }
   }
 

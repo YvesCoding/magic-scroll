@@ -1,5 +1,9 @@
 // detect content size change
 export default function listenResize(element, callback) {
+  if (!element) {
+    return false;
+  }
+
   return injectObject(element, callback);
 }
 
@@ -13,7 +17,7 @@ function injectObject(element, callback) {
   if (getComputedStyle(element).position === 'static') {
     element.style.position = 'relative'; // 将static改为relative
   }
-  element.__resizeListener__ = (e) => {
+  element.__resizeListener__ = e => {
     e.stopImmediatePropagation();
     e.preventDefault();
     callback();
@@ -48,8 +52,11 @@ function injectObject(element, callback) {
   );
 }
 
-const resetTrigger = (element) => {
+const resetTrigger = element => {
   const trigger = element.__resizeTrigger__;
+  if (!trigger) {
+    return;
+  }
   const expand = getExpand(trigger);
   const contract = getContract(trigger);
   const expandChild = expand.firstElementChild;
@@ -61,10 +68,10 @@ const resetTrigger = (element) => {
   expand.scrollTop = expand.scrollHeight;
 };
 
-const getExpand = (elm) => {
+const getExpand = elm => {
   return elm.firstElementChild;
 };
-const getContract = (elm) => {
+const getContract = elm => {
   return elm.lastElementChild;
 };
 

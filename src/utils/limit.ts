@@ -20,6 +20,10 @@ export function debounce(func, waitTime) {
     return res;
   }
 
+  deb.cancel = () => {
+    clearTimeout(timeId);
+  };
+
   return deb;
 }
 
@@ -48,6 +52,10 @@ export function throttle(func, waitTime) {
     }, waitTime);
     return res;
   }
+
+  deb.cancel = () => {
+    clearTimeout(timeId);
+  };
 
   return deb;
 }
