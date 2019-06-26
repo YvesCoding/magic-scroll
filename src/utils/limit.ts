@@ -1,15 +1,19 @@
 /**
  * Simple debounce
  */
+interface Deb {
+  (): void;
+  cancel?(): void;
+}
 export function debounce(func, waitTime) {
   let timeId;
   let _args;
   let context;
-  function deb(...args) {
+  const deb: Deb = (...args) => {
     context = this;
     _args = args;
     return readyToExecute();
-  }
+  };
 
   function readyToExecute() {
     clearTimeout(timeId);
@@ -34,11 +38,11 @@ export function throttle(func, waitTime) {
   let timeId;
   let _args;
   let context;
-  function deb(...args) {
+  const deb: Deb = (...args) => {
     context = this;
     _args = args;
     return readyToExecute();
-  }
+  };
 
   function readyToExecute() {
     if (timeId) {

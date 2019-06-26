@@ -1198,18 +1198,15 @@ class BaseScroll extends React.PureComponent {
 }
 BaseScroll.displayName = 'BasePScroll';
 
-/**
- * Simple debounce
- */
 function debounce(func, waitTime) {
     let timeId;
     let _args;
     let context;
-    function deb(...args) {
+    const deb = (...args) => {
         context = this;
         _args = args;
         return readyToExecute();
-    }
+    };
     function readyToExecute() {
         clearTimeout(timeId);
         let res;
@@ -1230,11 +1227,11 @@ function throttle(func, waitTime) {
     let timeId;
     let _args;
     let context;
-    function deb(...args) {
+    const deb = (...args) => {
         context = this;
         _args = args;
         return readyToExecute();
-    }
+    };
     function readyToExecute() {
         if (timeId) {
             return;
