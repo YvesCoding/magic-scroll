@@ -1,16 +1,24 @@
 {
   "name": "magic-scroll",
-  "version": "0.0.6",
-  "author": "Yves Wang",
-  "main": "dist/magic-scroll.js",
-  "typings": "types/index.d.ts",
+  "version": "0.0.0",
   "scripts": {
+    "build:docs": "yarn clean:docs && gatsby build",
+    "start:docs": "yarn clean:docs && gatsby develop",
+    "start": "yarn start:docs",
+    "eject:docs": "antdsite-cli --eject",
+    "clean:docs": "gatsby clean",
     "build": "cross-env BABEL_ENV=build node scripts/build.js",
     "debug": "cross-env BABEL_ENV=build node scripts/auto-build.js",
-    "demo": "cross-env NODE_ENV=development node ./src/demo/server.js",
     "test": "jest --config jest.config.js --collectCoverage",
     "lint": "tslint -c tslint.json 'src/**/*.tsx'"
   },
+  "dependencies": {
+    "react": "^16.8.0",
+    "react-dom": "^16.8.0"
+  },
+  "author": "Yves Wang",
+  "main": "dist/magic-scroll.js",
+  "typings": "types/index.d.ts",
   "license": "MIT",
   "repository": "https://github.com/YvesCoding/magic-scroll",
   "files": [
@@ -21,10 +29,6 @@
     "README.md",
     "LICENSE"
   ],
-  "dependencies": {
-    "react": "^16.8.0",
-    "react-dom": "^16.8.0"
-  },
   "devDependencies": {
     "@babel/cli": "^7.2.3",
     "@babel/core": "^7.2.2",
@@ -33,8 +37,8 @@
     "@types/prop-types": "^15.5.3",
     "@types/react": "^16.3.16",
     "@types/react-dom": "^16.0.5",
+    "antdsite": "0.7.2",
     "babel-cli": "^6.26.0",
-    "babel-helper-vue-jsx-merge-props": "^2.0.3",
     "babel-jest": "^23.6.0",
     "babel-loader": "^8.0.5",
     "babel-plugin-external-helpers": "^6.22.0",
@@ -49,6 +53,7 @@
     "enzyme": "^3.8.0",
     "enzyme-adapter-react-16": "^1.7.1",
     "enzyme-to-json": "^3.3.5",
+    "gatsby": "^2.13.45",
     "identity-obj-proxy": "^3.0.0",
     "inquirer": "^6.2.0",
     "jest": "^23.6.0",

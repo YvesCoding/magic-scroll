@@ -3,3 +3,6 @@ node_modules/
 coverage
 package-lock.json
 yarn-error.log
+$Recycle.Bin
+public
+.cache
