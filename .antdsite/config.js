@@ -6,12 +6,12 @@ module.exports = {
       lang: 'en-US',
       title: 'MagicSroll.js',
       description:
-        'MagicSroll - A customizable scrollbar plugin based on React.js for PC and mobile phone.'
+        'MagicSroll - A customizable scrollbar plugin based on React.js for PC and mobile phone'
     },
     '/zh/': {
       lang: 'zh-CN',
       title: 'MagicSroll.js',
-      description: 'MagicSroll - 一个React.js的自定义滚动条插件。'
+      description: 'MagicSroll - 一个React.js的自定义滚动条插件'
     }
   },
   themeConfig: {

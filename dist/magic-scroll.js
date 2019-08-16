@@ -1,5 +1,5 @@
 /**
- * magic-scroll v0.0.6
+ * magic-scroll v0.0.0
  * (c) 2018-2019 WangYi7099
  * Released under the MIT License
  */
@@ -1116,7 +1116,7 @@ Bar.defaultProps = {
     barSize: '6px',
     barBorderRadius: 'auto',
     barMinSize: 0,
-    railBg: '#01a99a',
+    railBg: '#e6f7ff',
     railOpacity: 0,
     railCls: '',
     railSize: '6px',
@@ -1126,7 +1126,7 @@ Bar.defaultProps = {
     onlyShowBarOnScroll: true,
     barKeepShowTime: 300,
     keepBarShow: false,
-    barBg: 'rgb(3, 185, 118)',
+    barBg: '#1890ff',
     barCls: '',
     barOpacity: 1,
     scrollButtonEnable: false,

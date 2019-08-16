@@ -5,44 +5,80 @@ import Footer from 'antdsite-footer';
 import { BackTop } from 'antd';
 import MainContent from 'antdsite-main-content';
 import { PageContext } from 'antdsite';
+import Scrollbar from '../../../dist/magic-scroll';
 
 export interface LayoutProps {
   isMobile: boolean;
 }
 
-interface LayoutState {}
+interface LayoutState {
+  windowHeight: number;
+}
 
 export default class Layout extends React.Component<LayoutProps, LayoutState> {
   static contextType = PageContext;
 
   constructor(props: LayoutProps) {
     super(props);
+
+    this.state = {
+      windowHeight: 0
+    };
   }
 
   preSlug: String;
 
   render() {
-    const { currentLocaleWebConfig: webConfig, slug, isWebsiteHome } = this.context;
+    const {
+      currentLocaleWebConfig: webConfig,
+      slug,
+      isWebsiteHome
+    } = this.context;
     const { showBackToTop } = webConfig.themeConfig;
     const { locales, footer: footerText } = webConfig;
 
-    const footer = footerText ? <Footer footeText={footerText} ref="footer" /> : null;
+    const { windowHeight } = this.state;
+
+    const footer = footerText ? (
+      <Footer footeText={footerText} ref="footer" />
+    ) : null;
 
     return (
       <div
+        style={{
+          height: windowHeight + 'px'
+        }}
         className={`page-wrapper ${((!locales && slug == '/') ||
           (locales && Object.keys(locales).includes(slug))) &&
           'index-page-wrapper'}`}
       >
-        <Header {...this.props} />
-        <MainContent {...this.props} isWebsiteHome={isWebsiteHome} footer={footer} />
-        {showBackToTop ? <BackTop /> : null}
+        <Scrollbar
+          railOpacity={1}
+          className="page-scrollbar"
+          renderPanel={(props) => {
+            return <div id="page-scrollbar-panel" {...props}></div>;
+          }}
+        >
+          <Header {...this.props} />
+          <MainContent
+            {...this.props}
+            isWebsiteHome={isWebsiteHome}
+            footer={footer}
+          />
+          {showBackToTop ? <BackTop /> : null}
+        </Scrollbar>
       </div>
     );
   }
 
   componentDidMount() {
     this.chekScrollPosition(this.context.slug);
+    window.addEventListener('resize', this.setWindowHeight);
+    this.setWindowHeight();
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener('resize', this.setWindowHeight);
   }
 
   componentDidUpdate() {
@@ -63,5 +99,11 @@ export default class Layout extends React.Component<LayoutProps, LayoutState> {
         }
       }, 100);
     }
+  }
+
+  setWindowHeight = () => {
+    this.setState({
+      windowHeight: window.innerHeight
+    });
   }
 }

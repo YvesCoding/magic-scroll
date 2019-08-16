@@ -1,28 +1,15 @@
 /**
-* prism.js default theme for JavaScript, CSS and HTML
-* Based on dabblet (http://dabblet.com)
-* @author Lea Verou
-*/
+ * prism.js tomorrow night eighties for JavaScript, CoffeeScript, CSS and HTML
+ * Based on https://github.com/chriskempson/tomorrow-theme
+ * @author Rose Pritchard
+ */
 
-pre code {
-  display: block;
-  background: white;
-  color: @site-text-color;
-  line-height: 2;
-  border: 1px solid #e9e9e9;
-  padding: 16px 32px;
-  border-radius: @border-radius-sm;
-  font-size: @font-size-base;
-  white-space: pre;
-  font-family: 'Lucida Console', Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
-}
-
-code[class*='language-'],
+pre code[class*='language-'],
 pre[class*='language-'] {
-  color: black;
+  color: #ccc;
   background: none;
-  font-family: 'Lucida Console', Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
-  direction: ltr;
+  font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+  font-size: 1em;
   text-align: left;
   white-space: pre;
   word-spacing: normal;
@@ -40,104 +27,73 @@ pre[class*='language-'] {
   hyphens: none;
 }
 
-pre[class*='language-']::-moz-selection,
-pre[class*='language-'] ::-moz-selection,
-code[class*='language-']::-moz-selection,
-code[class*='language-'] ::-moz-selection {
-  text-shadow: none;
-  background: #b3d4fc;
-}
-
-pre[class*='language-']::selection,
-pre[class*='language-'] ::selection,
-code[class*='language-']::selection,
-code[class*='language-'] ::selection {
-  text-shadow: none;
-  background: #b3d4fc;
-}
-
-@media print {
-  code[class*='language-'],
-  pre[class*='language-'] {
-    text-shadow: none;
-  }
-}
-
 /* Code blocks */
 pre[class*='language-'] {
-  padding: 12px 20px;
-  margin: 16px 0;
+  padding: 1em;
+  margin: 0.5em 0;
   overflow: auto;
 }
 
-:not(pre) > code[class*='language-'],
 pre[class*='language-'] {
-  background: #f2f4f5;
-}
-
-/* Inline code */
-:not(pre) > code[class*='language-'] {
-  padding: 0.1em;
-  border-radius: 0.3em;
-  white-space: normal;
+  background: #2d2d2d;
 }
 
 .token.comment,
+.token.block-comment,
 .token.prolog,
 .token.doctype,
 .token.cdata {
-  color: slategray;
-}
-
-.token.punctuation {
   color: #999;
 }
 
-.namespace {
-  opacity: 0.7;
+.token.punctuation {
+  color: #ccc;
+}
+
+.token.tag,
+.token.attr-name,
+.token.namespace,
+.token.deleted {
+  color: #e2777a;
+}
+
+.token.function-name {
+  color: #6196cc;
+}
+
+.token.boolean,
+.token.number,
+.token.function {
+  color: #f08d49;
 }
 
 .token.property,
-.token.tag,
-.token.boolean,
-.token.number,
+.token.class-name,
 .token.constant,
-.token.symbol,
-.token.deleted {
-  color: #f81d22;
+.token.symbol {
+  color: #f8c555;
 }
 
 .token.selector,
-.token.attr-name,
+.token.important,
+.token.atrule,
+.token.keyword,
+.token.builtin {
+  color: #cc99cd;
+}
+
 .token.string,
 .token.char,
-.token.builtin,
-.token.inserted {
-  color: #0b8235;
+.token.attr-value,
+.token.regex,
+.token.variable {
+  color: #7ec699;
 }
 
 .token.operator,
 .token.entity,
-.token.url,
-.language-css .token.string,
-.style .token.string {
-  color: #0b8235;
-}
-
-.token.atrule,
-.token.attr-value,
-.token.keyword {
-  color: #008dff;
-}
-
-.token.function {
-  color: #f81d22;
-}
-
-.token.regex,
-.token.important,
-.token.variable {
-  color: #e90;
+.token.url {
+  color: #67cdcc;
 }
 
 .token.important,
@@ -152,20 +108,26 @@ pre[class*='language-'] {
   cursor: help;
 }
 
+.token.inserted {
+  color: green;
+}
+
+/////////
+
 .gatsby-highlight {
-  background: #f2f4f5;
+  // background: #f2f4f5;
   position: relative;
 }
 
 .gatsby-highlight pre[class*='language-'] {
-  background-color: transparent;
+  // background-color: transparent;
   border: 0;
   -webkit-overflow-scrolling: touch;
 }
 
 .gatsby-highlight pre[class*='language-']::before {
   border-radius: 0 0 4px 4px;
-  color: rgba(0, 0, 0, 0.65);
+  // color: rgba(0, 0, 0, 0.65);
   font-size: 0.75rem;
   font-family: SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
   letter-spacing: 0.075em;

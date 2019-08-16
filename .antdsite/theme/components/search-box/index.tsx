@@ -4,11 +4,11 @@ import { PageInfo } from '../utils';
 import { OneToc } from '../../../templates';
 import Link from '../MyLink';
 
-type filterDatas = {
+type filterDatas = Array<Array<{
   title: string;
   important?: boolean;
   url?: string;
-}[][];
+}>>;
 
 interface SearchState {
   isSearchListShow: boolean;
@@ -18,7 +18,7 @@ interface SearchState {
 }
 
 interface SearchProps {
-  datas: Array<PageInfo>;
+  datas: PageInfo[];
   max: number;
   mobile?: boolean;
 }
@@ -35,7 +35,9 @@ function flattenToc(items: OneToc[]): OneToc[] {
     ? items.reduce((pre, cur) => {
         return pre
           .concat(cur as any)
-          .concat((cur.items && cur.items.length ? flattenToc(cur.items) : []) as any);
+          .concat((cur.items && cur.items.length
+            ? flattenToc(cur.items)
+            : []) as any);
       }, [])
     : [];
 }
@@ -66,13 +68,13 @@ export default class Search extends React.Component<SearchProps, SearchState> {
         isFocus: false
       };
     });
-  };
+  }
 
   handleClickIcon = () => {
     return {
       isFocus: true
     };
-  };
+  }
 
   handleInput = (e: React.FormEvent<HTMLInputElement>) => {
     this.setState(
@@ -85,7 +87,7 @@ export default class Search extends React.Component<SearchProps, SearchState> {
         this.search();
       }
     );
-  };
+  }
 
   search = () => {
     const { datas, max } = this.props;
@@ -108,7 +110,11 @@ export default class Search extends React.Component<SearchProps, SearchState> {
             important: currentItem.important
           }
         ]);
-      } else if (currentItem.toc && currentItem.toc.items.length) {
+      } else if (
+        currentItem.toc &&
+        currentItem.toc.items &&
+        currentItem.toc.items.length
+      ) {
         let tocs = flattenToc(currentItem.toc.items);
         for (let i = 0; i < tocs.length && results.length < max; i++) {
           let t = tocs[i];
@@ -142,7 +148,7 @@ export default class Search extends React.Component<SearchProps, SearchState> {
     this.setState({
       filterDatas: results
     });
-  };
+  }
 
   render() {
     const { filterDatas, isFocus } = this.state;
@@ -155,7 +161,7 @@ export default class Search extends React.Component<SearchProps, SearchState> {
             <Icon type="search" onClick={this.handleClickIcon} />
           </div>
           <Input
-            ref={ref => {
+            ref={(ref) => {
               this.searchInput = ref;
             }}
             value={this.state.query}
@@ -171,7 +177,7 @@ export default class Search extends React.Component<SearchProps, SearchState> {
             <List
               key="search-list"
               dataSource={filterDatas}
-              renderItem={dataItem => {
+              renderItem={(dataItem) => {
                 return (
                   <List.Item>
                     <Link
@@ -217,7 +223,7 @@ export default class Search extends React.Component<SearchProps, SearchState> {
 
   componentDidMount() {
     const { searchInput } = this;
-    document.addEventListener('keyup', event => {
+    document.addEventListener('keyup', (event) => {
       if (event.keyCode === 83 && event.target === document.body) {
         searchInput && searchInput.focus();
       }

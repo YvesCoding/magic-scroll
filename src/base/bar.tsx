@@ -5,7 +5,7 @@ import TouchManager from '../utils/touchManager';
 
 import { cached } from '../utils/object';
 import { normalizeClass } from '../utils/class';
-import { requestAnimationFrame } from '../vender/scroller/requestAnimationFrame';
+import { requestAnimationFrame } from '../vender/easingPattern/animate';
 
 /* --------------- Type Definations ---------------- */
 
@@ -150,7 +150,7 @@ export class Bar extends React.PureComponent<
     barBorderRadius: 'auto',
     barMinSize: 0,
 
-    railBg: '#01a99a',
+    railBg: '#e6f7ff',
     railOpacity: 0,
     railCls: '',
     railSize: '6px',
@@ -162,7 +162,7 @@ export class Bar extends React.PureComponent<
 
     barKeepShowTime: 300,
     keepBarShow: false,
-    barBg: 'rgb(3, 185, 118)',
+    barBg: '#1890ff',
     barCls: '',
     barOpacity: 1,
 

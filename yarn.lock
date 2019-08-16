@@ -2888,10 +2888,10 @@ antd@^3.9.0, antd@latest:
     shallowequal "^1.1.0"
     warning "~4.0.3"
 
-antdsite@0.7.2:
-  version "0.7.2"
-  resolved "https://registry.yarnpkg.com/antdsite/-/antdsite-0.7.2.tgz#67f96849278d2885277e95b06d000ac02ba39380"
-  integrity sha512-qViBRSpJWLxQ98Dzw766rhV6WNCQQNUE/MidADl0j3yQzlvIUHUuBN0fHN2v0e4VpfpNA8vkJ5sCxnUf9iFo0w==
+antdsite@0.10.1:
+  version "0.10.1"
+  resolved "https://registry.yarnpkg.com/antdsite/-/antdsite-0.10.1.tgz#36df4dcca573181f7680a53ec0388a5c549e5e73"
+  integrity sha512-vONIdPZW80MJZ5VJOdxtxACwnYH0bRtwGjUwjSedjBO0Pe+Dmy5kYrL0gYkKsHRZwG3gH0roolov+nefUDoaRQ==
   dependencies:
     "@babel/cli" "^7.0.0"
     "@babel/core" "^7.0.0"
