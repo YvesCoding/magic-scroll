@@ -8,7 +8,7 @@ import * as utils from '../utils';
 function Banner(props) {
   return (
     <PageContext.Consumer>
-      {context => {
+      {(context) => {
         const {
           currentPageInfo: { frontmatter },
           currentLocaleWebConfig

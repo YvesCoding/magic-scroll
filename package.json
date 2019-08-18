@@ -13,6 +13,7 @@
     "lint": "tslint -c tslint.json 'src/**/*.tsx'"
   },
   "dependencies": {
+    "@mdx-js/runtime": "^1.3.0",
     "react": "^16.8.0",
     "react-dom": "^16.8.0"
   },

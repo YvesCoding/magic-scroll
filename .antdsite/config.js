@@ -6,15 +6,18 @@ module.exports = {
       lang: 'en-US',
       title: 'MagicSroll.js',
       description:
-        'MagicSroll - A customizable scrollbar plugin based on React.js for PC and mobile phone'
+        'A customizable scrollbar plugin based on React.js for PC and mobile phone'
     },
     '/zh/': {
       lang: 'zh-CN',
       title: 'MagicSroll.js',
-      description: 'MagicSroll - 一个React.js的自定义滚动条插件'
+      description: '一个React.js的自定义滚动条插件'
     }
   },
+  logo: '/logo.png',
+  head: [['link', { rel: 'icon', href: `/logo.png` }]],
   themeConfig: {
+    repo: 'YvesCoding/magic-scroll',
     locales: {
       '/': {
         label: 'English',
@@ -29,6 +32,11 @@ module.exports = {
           {
             text: 'Demo',
             link: '/demo/'
+          },
+          {
+            text: 'GitHub',
+            link: 'https://github.com/YvesCoding/magic-scroll',
+            important: true
           }
         ],
         sidebar: {
@@ -48,6 +56,11 @@ module.exports = {
           {
             text: 'Demo',
             link: '/zh/demo/'
+          },
+          {
+            text: 'GitHub',
+            link: 'https://github.com/YvesCoding/magic-scroll',
+            important: true
           }
         ],
         sidebar: {
@@ -64,16 +77,6 @@ function genSidebarConfig(title) {
       title,
       collapsable: false,
       children: ['', 'getting-started', 'props', 'event', 'api']
-    }
-  ];
-}
-
-function genDemo(title) {
-  return [
-    {
-      title,
-      collapsable: false,
-      children: ['']
     }
   ];
 }
