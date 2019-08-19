@@ -55,6 +55,7 @@ export default class Layout extends React.Component<LayoutProps, LayoutState> {
         <Scrollbar
           railOpacity={1}
           className="page-scrollbar"
+          scrollingX={false}
           renderPanel={(props) => {
             return <div id="page-scrollbar-panel" {...props}></div>;
           }}
