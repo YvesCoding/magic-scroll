@@ -34,6 +34,7 @@ export default class Layout extends React.Component<LayoutProps, LayoutState> {
       slug,
       isWebsiteHome
     } = this.context;
+
     const { showBackToTop } = webConfig.themeConfig;
     const { locales, footer: footerText } = webConfig;
 
@@ -57,15 +58,11 @@ export default class Layout extends React.Component<LayoutProps, LayoutState> {
           className="page-scrollbar"
           scrollingX={false}
           renderPanel={(props) => {
-            return <div id="page-scrollbar-panel" {...props}></div>;
+            return <div id="page-scrollbar-panel" {...props} />;
           }}
         >
           <Header {...this.props} />
-          <MainContent
-            {...this.props}
-            isWebsiteHome={isWebsiteHome}
-            footer={footer}
-          />
+          <MainContent {...this.props} isWebsiteHome={isWebsiteHome} />
           {showBackToTop ? <BackTop /> : null}
         </Scrollbar>
       </div>
@@ -106,5 +103,5 @@ export default class Layout extends React.Component<LayoutProps, LayoutState> {
     this.setState({
       windowHeight: window.innerHeight
     });
-  }
+  };
 }

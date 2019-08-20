@@ -6,12 +6,12 @@ module.exports = {
       lang: 'en-US',
       title: 'MagicSroll.js',
       description:
-        'A customizable scrollbar plugin based on React.js for PC and mobile phone'
+        'A customizable scrollbar component based on React.js for PC and mobile phone'
     },
     '/zh/': {
       lang: 'zh-CN',
       title: 'MagicSroll.js',
-      description: '一个React.js的自定义滚动条插件'
+      description: '一个React.js的自定义滚动条组件'
     }
   },
   logo: '/logo.png',
@@ -32,6 +32,20 @@ module.exports = {
           {
             text: 'Demo',
             link: '/demo/'
+          },
+          {
+            text: 'My opensources',
+            important: true,
+            items: [
+              {
+                text: 'Antdsite',
+                link: 'https://github.com/YvesCoding/antdsite'
+              },
+              {
+                text: 'Vuescroll',
+                link: 'https://github.com/YvesCoding/vuescroll'
+              }
+            ]
           },
           {
             text: 'GitHub',
@@ -56,6 +70,20 @@ module.exports = {
           {
             text: 'Demo',
             link: '/zh/demo/'
+          },
+          {
+            text: '我的开源项目',
+            important: true,
+            items: [
+              {
+                text: 'Antdsite',
+                link: 'https://github.com/YvesCoding/antdsite'
+              },
+              {
+                text: 'Vuescroll',
+                link: 'https://github.com/YvesCoding/vuescroll'
+              }
+            ]
           },
           {
             text: 'GitHub',

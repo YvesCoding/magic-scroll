@@ -81,7 +81,7 @@ export default class NativePanel extends React.PureComponent<Props> {
       createHideBarStyle();
       className.push('__hidebar');
       if (isIos()) {
-        style['-webkit-overflow-scrolling'] = 'touch';
+        style.WebkitOverflowScrolling = 'touch';
       }
     } else {
       if (barsState.vBar.size) {

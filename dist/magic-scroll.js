@@ -565,7 +565,7 @@ class NativePanel extends React.PureComponent {
             createHideBarStyle();
             className.push('__hidebar');
             if (isIos()) {
-                style['-webkit-overflow-scrolling'] = 'touch';
+                style.WebkitOverflowScrolling = 'touch';
             }
         } else {
             if (barsState.vBar.size) {
@@ -1724,7 +1724,7 @@ class MagicScrollNative extends React.PureComponent {
         vertical.scrolledDistance = scrollTop;
         horizontal.scrolledDistance = scrollLeft;
         const eventHandle = this.props[eventHandleName];
-        if (eventHandle) {
+        if (eventHandle && eventHandle instanceof Function) {
             eventHandle({
                 name: eventHandleName,
                 event,

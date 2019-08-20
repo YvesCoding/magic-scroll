@@ -24,7 +24,17 @@ export default class Article extends React.PureComponent {
   };
 
   getPageTitle = (currentPageTitle: string, webAppName: string) => {
-    return currentPageTitle ? `${currentPageTitle} | ${webAppName}` : webAppName;
+    return currentPageTitle
+      ? `${currentPageTitle} | ${webAppName}`
+      : webAppName;
+  };
+
+  getScrollTarget = () => {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+
+    return document.querySelector('#page-scrollbar-panel');
   };
 
   render() {
@@ -49,10 +59,19 @@ export default class Article extends React.PureComponent {
       }
     } = this.context;
 
-    const { subtitle, disableEditLink, disableUpdateTime } = currentPageInfo.frontmatter;
+    const {
+      subtitle,
+      disableEditLink,
+      disableUpdateTime
+    } = currentPageInfo.frontmatter;
     const { path, modifiedTime, avatarList } = currentPageInfo.fields;
     const noAvatar = !showAvatarList || !avatarList || !avatarList.length;
-    const editPath = this.getEditLink(editLink, docsRepo || repo, docsBranch, path);
+    const editPath = this.getEditLink(
+      editLink,
+      docsRepo || repo,
+      docsBranch,
+      path
+    );
 
     const currentPageTitle = getPageTitle(currentPageInfo);
     return (
@@ -65,11 +84,14 @@ export default class Article extends React.PureComponent {
         />
         <article
           className="markdown"
-          ref={node => {
+          ref={(node) => {
             this.node = node;
           }}
         >
-          {(docsRepo || repo) && editLinkText && editLinks && !disableEditLink ? (
+          {(docsRepo || repo) &&
+          editLinkText &&
+          editLinks &&
+          !disableEditLink ? (
             <h1>
               {currentPageTitle}
               {!subtitle ? null : <span className="subtitle">{subtitle}</span>}
@@ -79,15 +101,23 @@ export default class Article extends React.PureComponent {
           ) : null}
 
           {lastUpdated && !disableUpdateTime && (
-            <div className={`modifiedTime ${noAvatar ? 'modifiedTimeLeft' : ''}`}>
+            <div
+              className={`modifiedTime ${noAvatar ? 'modifiedTimeLeft' : ''}`}
+            >
               {!noAvatar && <AvatarList avatarList={avatarList} />}
               {lastUpdated} {moment(modifiedTime).format('YYYY-MM-DD HH:mm:SS')}
             </div>
           )}
 
-          {currentPageInfo.tableOfContents.items && currentPageInfo.tableOfContents.items.length ? (
+          {currentPageInfo.tableOfContents.items &&
+          currentPageInfo.tableOfContents.items.length ? (
             <div className="toc-affix">
-              <Anchor offsetTop={70} className="toc">
+              <Anchor
+                offsetTop={70}
+                className="toc"
+                getContainer={this.getScrollTarget}
+                targetOffset={10}
+              >
                 {currentPageInfo.tableOfContents.items.map(this.getTocs)}
               </Anchor>
             </div>
@@ -99,7 +129,12 @@ export default class Article extends React.PureComponent {
       </>
     );
   }
-  getEditLink(editLink: string, docsRepo: string, docsBranch: string, path: string) {
+  getEditLink(
+    editLink: string,
+    docsRepo: string,
+    docsBranch: string,
+    path: string
+  ) {
     if (editLink) return editLink;
 
     const bitbucket = /bitbucket.org/;

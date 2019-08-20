@@ -347,7 +347,8 @@ class MagicScrollNative extends React.PureComponent<
     horizontal.scrolledDistance = scrollLeft;
 
     const eventHandle = this.props[eventHandleName];
-    if (eventHandle) {
+
+    if (eventHandle && eventHandle instanceof Function) {
       eventHandle({
         name: eventHandleName,
         event,

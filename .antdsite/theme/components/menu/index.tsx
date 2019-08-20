@@ -15,9 +15,12 @@ function getFlatMenuList(menuList: PageInfo[]): PageInfo[] {
   }, []);
 }
 
-function getActiveMenuItem(slug: string, currentPageSidebarItems: PageInfo[]): PageInfo {
+function getActiveMenuItem(
+  slug: string,
+  currentPageSidebarItems: PageInfo[]
+): PageInfo {
   const newMenusList = getFlatMenuList(currentPageSidebarItems);
-  const activeMenu = newMenusList.find(menu => menu.slug == slug);
+  const activeMenu = newMenusList.find((menu) => menu.slug == slug);
   if (!activeMenu) return { title: '', slug: '', children: [] };
 
   return activeMenu;
@@ -27,7 +30,10 @@ interface MenuPros {
   menuList: PageInfo[];
   currentPath: string;
   isMobile: boolean;
-  getPreAndNextMenu?(prev: React.Component | null, next: React.Component | null): void;
+  getPreAndNextMenu?(
+    prev: React.Component | null,
+    next: React.Component | null
+  ): void;
 }
 
 interface MenuState {
@@ -97,7 +103,9 @@ export default class LeftMenu extends React.PureComponent<MenuPros, MenuState> {
   getSideBarOpenKeys = () => {
     const { menuList } = this.props;
     const newMenusList = getFlatMenuList(menuList);
-    return newMenusList.filter(menu => !menu.collapsable).map(menu => menu.title);
+    return newMenusList
+      .filter((menu) => !menu.collapsable)
+      .map((menu) => menu.title);
   };
 
   generateMenuItem = ({ before = null, after = null }, item: PageInfo) => {
@@ -160,12 +168,14 @@ export default class LeftMenu extends React.PureComponent<MenuPros, MenuState> {
   generateSubMenuItems = (menus?: PageInfo[], footerNavIcons = {}) => {
     if (!menus) return [];
     const generateMenuItem = this.generateMenuItem.bind(this, footerNavIcons);
-    const itemGroups = menus.map(menu => {
+    const itemGroups = menus.map((menu) => {
       if (!menu.children || !menu.children.length) {
         return generateMenuItem(menu);
       }
 
-      const groupItems = menu.children.map(item => this.generaGroupItem(footerNavIcons, item));
+      const groupItems = menu.children.map((item) =>
+        this.generaGroupItem(footerNavIcons, item)
+      );
       return (
         <SubMenu title={menu.title} key={menu.title}>
           {groupItems}
@@ -178,6 +188,14 @@ export default class LeftMenu extends React.PureComponent<MenuPros, MenuState> {
   getMenuItems = (footerNavIcons = {}) => {
     const { menuList } = this.props;
     return this.generateSubMenuItems(menuList, footerNavIcons);
+  };
+
+  getScrollTarget = () => {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+
+    return document.querySelector('#page-scrollbar-panel');
   };
 
   render() {
@@ -205,7 +223,7 @@ export default class LeftMenu extends React.PureComponent<MenuPros, MenuState> {
       </MobileMenu>
     ) : (
       <Col xxl={4} xl={5} lg={6} md={24} sm={24} xs={24} className="main-menu">
-        <Affix offsetTop={70}>
+        <Affix offsetTop={70} target={this.getScrollTarget}>
           <section className="main-menu-inner">{menuChild}</section>
         </Affix>
       </Col>
