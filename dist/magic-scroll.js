@@ -1,5 +1,5 @@
 /**
- * magic-scroll v0.0.11
+ * magic-scroll v0.0.12
  * (c) 2018-2020 WangYi7099
  * Released under the MIT License
  */
@@ -507,7 +507,7 @@ var Panel = /** @class */function (_super) {
 
 var isIos = function () {
     /* istanbul ignore if */
-    if (typeof window === 'undefined') {
+    if (typeof window === "undefined") {
         return false;
     }
     var u = navigator.userAgent;
@@ -517,22 +517,22 @@ function getPrefix(global) {
     var docStyle = document.documentElement.style;
     var engine;
     /* istanbul ignore if */
-    if (global.opera && Object.prototype.toString.call(global.opera) === '[object Opera]') {
-        engine = 'presto';
+    if (global.opera && Object.prototype.toString.call(global.opera) === "[object Opera]") {
+        engine = "presto";
     } /* istanbul ignore next */
-    else if ('MozAppearance' in docStyle) {
-            engine = 'gecko';
-        } else if ('WebkitAppearance' in docStyle) {
-            engine = 'webkit';
+    else if ("MozAppearance" in docStyle) {
+            engine = "gecko";
+        } else if ("WebkitAppearance" in docStyle) {
+            engine = "webkit";
         } /* istanbul ignore next */
-        else if (typeof global.navigator.cpuClass === 'string') {
-                engine = 'trident';
+        else if (typeof global.navigator.cpuClass === "string") {
+                engine = "trident";
             }
     var vendorPrefix = {
-        trident: 'ms',
-        gecko: 'moz',
-        webkit: 'webkit',
-        presto: 'O'
+        trident: "ms",
+        gecko: "moz",
+        webkit: "webkit",
+        presto: "O"
     }[engine];
     return vendorPrefix;
 }
@@ -540,11 +540,11 @@ function getPrefix(global) {
  * Get a style with a browser prefix
  */
 function getComplitableStyle(property, value) {
-    if (typeof window === 'undefined') {
+    if (typeof window === "undefined") {
         return value;
     }
     var compatibleValue = "-" + getPrefix(window) + "-" + value;
-    var testElm = document.createElement('div');
+    var testElm = document.createElement("div");
     testElm.style[property] = compatibleValue;
     if (testElm.style[property] == compatibleValue) {
         /* istanbul ignore next */
@@ -556,23 +556,26 @@ function getComplitableStyle(property, value) {
 // Computed the bowser scrollbar gutter
 var scrollBarWidth;
 function getNativeScrollbarSize() {
-    if (typeof window === 'undefined') {
+    if (typeof window === "undefined") {
         return 0;
     }
     if (scrollBarWidth !== undefined) {
         return scrollBarWidth;
     }
-    var outer = document.createElement('div');
-    outer.style.visibility = 'hidden';
-    outer.style.width = '100px';
-    outer.style.position = 'absolute';
-    outer.style.top = '-9999px';
-    outer.style.overflow = 'scroll';
+    var outer = document.createElement("div");
+    outer.style.visibility = "hidden";
+    outer.style.width = "100px";
+    outer.style.position = "absolute";
+    outer.style.top = "-9999px";
     document.body.appendChild(outer);
-    var offsetWidth = outer.offsetWidth,
-        clientWidth = outer.clientWidth;
-    scrollBarWidth = offsetWidth - clientWidth;
-    document.body.removeChild(outer);
+    var widthNoScroll = outer.offsetWidth;
+    outer.style.overflow = "scroll";
+    var inner = document.createElement("div");
+    inner.style.width = "100%";
+    outer.appendChild(inner);
+    var widthWithScroll = inner.offsetWidth;
+    outer.parentNode.removeChild(outer);
+    scrollBarWidth = widthNoScroll - widthWithScroll;
     return scrollBarWidth;
 }
 
