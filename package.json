@@ -1,6 +1,6 @@
 {
   "name": "magic-scroll",
-  "version": "0.0.0",
+  "version": "0.0.7",
   "scripts": {
     "build:docs": "yarn clean:docs && gatsby build",
     "start:docs": "yarn clean:docs && gatsby develop",

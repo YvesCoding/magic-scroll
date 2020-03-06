@@ -1,5 +1,5 @@
 /**
- * magic-scroll v0.0.0
+ * magic-scroll v0.0.7
  * (c) 2018-2020 WangYi7099
  * Released under the MIT License
  */
