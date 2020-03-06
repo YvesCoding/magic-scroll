@@ -1,12 +1,12 @@
 // rollup.config.js
-const resolveNode = require('rollup-plugin-node-resolve');
-const babel = require('rollup-plugin-babel');
-const typescript = require('rollup-plugin-typescript');
-const ts = require('typescript');
-const replace = require('rollup-plugin-replace');
-const path = require('path');
-const postcss = require('rollup-plugin-postcss');
-const fs = require('fs');
+const resolveNode = require("rollup-plugin-node-resolve");
+const babel = require("rollup-plugin-babel");
+const typescript = require("rollup-plugin-typescript");
+const ts = require("typescript");
+const replace = require("rollup-plugin-replace");
+const path = require("path");
+const postcss = require("rollup-plugin-postcss");
+const fs = require("fs");
 
 function getPkgInfo(dirOfPackageJson) {
   const json = require(dirOfPackageJson);
@@ -22,16 +22,16 @@ function getPkgInfo(dirOfPackageJson) {
   };
 }
 
-const resolve = (p) => {
-  return path.resolve('./src', p);
+const resolve = p => {
+  return path.resolve("./src", p);
 };
 
 const builds = {
-  'magic-scroll-native-umd': {
-    entry: resolve('native/index.tsx'),
-    dest: resolve('../dist/magic-scroll.js'),
-    format: 'umd',
-    external: ['react', 'react-dom', 'prop-types']
+  "magic-scroll-native-umd": {
+    entry: resolve("native/index.tsx"),
+    dest: resolve("../dist/magic-scroll.js"),
+    format: "umd",
+    external: ["react", "react-dom", "prop-types"]
   }
   // 'magic-scroll-native-umd-min': {
   //   entry: resolve(root + '/index.tsx'),
@@ -50,11 +50,11 @@ function genConfig(name) {
     input: opts.entry,
     external: opts.external,
     output: {
-      exports: 'named',
+      exports: "named",
       globals: {
-        react: 'react',
-        'react-dom': 'ReactDOM',
-        'prop-types': 'PropTypes'
+        react: "react",
+        "react-dom": "ReactDOM",
+        "prop-types": "PropTypes"
       },
       file: opts.dest,
       format: opts.format,
@@ -63,16 +63,18 @@ function genConfig(name) {
     },
     plugins: [
       resolveNode(),
-      typescript({ typescript: ts }),
+      typescript({
+        typescript: ts
+      }),
       postcss({
         extract: true,
         modules: true
       }),
       babel({
-        exclude: 'node_modules/**' // only transpile our source code
+        exclude: "node_modules/**" // only transpile our source code
       }),
       replace({
-        'process.env.NODE_FORMAT': JSON.stringify(opts.format),
+        "process.env.NODE_FORMAT": JSON.stringify(opts.format),
         __version__: pkgInfo.version
       })
     ]
